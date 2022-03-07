@@ -1,0 +1,185 @@
+# Student
+type Student {
+    id: String!
+    name: String!
+    email: String
+}
+
+input InputStudent {
+    id: String!
+    name: String!
+    email: String
+}
+
+input UploadStudentInput {
+    teacherId: ID!
+    id: ID!
+    students: [InputStudent]
+}
+
+# S3 Object Type
+type S3Object {
+    bucket: String!
+    region: String!
+    uri: String!
+}
+
+input UploadFile {
+    bucket: String!
+    region: String!
+    uri: String!
+}
+
+# Classroom
+type Classroom {
+    id: ID!
+    teacherId: String!
+    name: String!
+    description: String
+    students: [Student]
+}
+
+input CreateClassroomInput{
+    teacherId: String!
+    name: String!
+    description: String
+}
+
+input UpdateClassroomInput{
+  classroomId: ID!
+  teacherId: String!
+  name: String!
+  description: String
+}
+
+type ClassroomPreview{
+    id: ID!
+    name: String!
+    description: String!
+}
+
+# type ClassroomResponse{
+#     classroom: Classroom!
+#     answerSheets: [AnswerSheetPreview]!
+# }
+
+type ClassroomConnection{
+    items: [Classroom]
+    nextToken: String
+}
+
+# Answersheet
+
+type AnswerSheet {
+    qid: ID!
+    type: Int
+    classroomId: String!
+    name: String!
+    status: Int!
+    file: S3Object!
+    locate: [PDFAnnotation]
+}
+
+type AnswerSheetConnection{
+    items: [AnswerSheet]
+    nextToken: String
+}
+
+type StudentAnswerSheet {
+    file: S3Object
+}
+
+input CreateAnswerSheetInput {
+  classroomId: ID!
+  name: String!
+  bucket: String!
+  region: String!
+  uri: String!
+}
+
+# Answersheet->Question
+type PDFAnnotation{
+    id: ID!
+    tcode: String!
+    x: Float!
+    y: Float!
+    p_height: Float!
+    p_width: Float!
+    page: Int!
+    answer: String
+    answer_type: Int
+}
+
+input Question {
+    questionId: ID!,
+    answer: String,
+    answer_type: Int
+}
+
+# Student Answer
+
+type StudentAnswer{
+    questionId: String!
+    studentId: String!
+    studentAnswer: String
+    grade: Float
+    file: S3Object
+}
+
+type StudentAnswerConnection{
+    items: [StudentAnswer]
+    nextToken: String
+}
+
+input Grading{
+  questionId: ID!
+  studentId: ID!
+  grade: Float!
+}
+
+# Query & Mutation
+
+type RequestResponse{
+    result: Boolean!
+    msg: String
+}
+
+type Query {
+    getClassroom(id:ID!, teacherId: ID!): Classroom # 
+        @aws_cognito_user_pools
+    getAnswerSheet(id: ID!, classroomId: ID!): AnswerSheet #
+        @aws_cognito_user_pools
+    getQuestion(sheetId: ID!, classroomId: ID!, id: ID!): PDFAnnotation #
+        @aws_cognito_user_pools
+    listClassrooms(teacherId: ID!, limit: Int, nextToken: String): ClassroomConnection #
+        @aws_cognito_user_pools
+    listAnswerSheet(classroomId: ID!, limite: Int, nextToken: String): AnswerSheetConnection #
+        @aws_cognito_user_pools
+    listStudentAnswer(questionId: ID, limit: Int, nextToken: String): StudentAnswerConnection #
+        @aws_cognito_user_pools
+    
+    #downloadStudentAnswerSheet(id: ID!, classroomId: ID!): StudentAnswerSheet
+}
+
+type Mutation{
+    createClassroom(classroom: CreateClassroomInput!): Classroom #
+        @aws_cognito_user_pools
+    updateClassroom(classroom: UpdateClassroomInput!): Classroom #
+        @aws_cognito_user_pools
+    removeClassroom(id: ID!, teacherId: ID!): String #
+        @aws_cognito_user_pools
+  	uploadStudent(id:ID!, teacherId:ID!, student:[InputStudent]): RequestResponse #
+        @aws_cognito_user_pools
+    removeStudent(teacherId: ID!, id: ID!, studentId: String!): Student #
+        @aws_cognito_user_pools
+  	createAnswerSheet(teacherId: ID!, type:Int!, classroomId: ID!, name: String!, file:UploadFile!): RequestResponse #
+        @aws_cognito_user_pools
+    removeAnswerSheet(id: ID!, classroomId: ID!): RequestResponse #
+        @aws_cognito_user_pools
+    saveQuestion(classroomId: ID!, id: ID!, questions: [Question]! ): RequestResponse #
+        @aws_cognito_user_pools
+  	startGrading(answerSheetId: ID!): RequestResponse
+        @aws_cognito_user_pools
+  	saveGrading(grading: [Grading]): RequestResponse #
+        @aws_cognito_user_pools
+}
