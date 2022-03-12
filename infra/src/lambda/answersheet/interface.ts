@@ -8,7 +8,8 @@ type PDFAnnotation = {
     p_height: number,
     p_width: number,
     answer: string,
-    answer_type: number
+    answer_type: number,
+    mark: number
 }
 
 type AnswerSheet = {

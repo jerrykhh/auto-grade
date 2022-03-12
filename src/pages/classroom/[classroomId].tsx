@@ -15,11 +15,14 @@ import { getClassroom } from "../../lib/classroom/queries";
 import { updateStudent, UpdateStudentMutation } from "../../lib/classroom/mutations";
 import Table from "../../components/element/table";
 import Accordion from "../../components/element/accordion";
+import Modal from "../../components/element/modal";
 import Link from "next/link";
 import Button from "../../components/element/button";
 import { CloudUploadIcon, EyeIcon, DocumentDownloadIcon } from "@heroicons/react/outline";
 import { TrashIcon } from "@heroicons/react/solid";
-import {downloadBlob} from "../../lib/download/downloadBlob"
+import { downloadBlob } from "../../lib/download/downloadBlob"
+import { UploadStudentAnswerSheet } from "../../lib/studentAnswer/mutation";
+import awsconfig from "../../../aws-config";
 
 export const getServerSideProps: GetServerSideProps = async ({ req, query }) => {
     console.log("server");
@@ -88,6 +91,11 @@ const ClassroomDetailPage = ({ room }: { room: Classroom }) => {
     const [classroom, setClassroom] = useState<Classroom>(room)
     const [answerSheets, setAnswerSheets] = useState<Array<AnswerSheet>>([]);
     const [portalErrMes, setPortalErrMes] = useState<String>("");
+
+    const [uploadModal, setUploadModal] = useState<boolean>(false);
+    const [file, setFile] = useState<File | null>(null);
+    const [modalErrMes, setModalErrMes] = useState<string>("");
+    const [uploadStudentAnswerSheetId, setUploadStudentAnswerSheetId] = useState<String>("")
 
     useEffect(() => {
         async function getAnswerSheets() {
@@ -178,12 +186,59 @@ const ClassroomDetailPage = ({ room }: { room: Classroom }) => {
         }
     }
 
+
     const downloadStudentAnswerSheet = async (answerSheetId: String, classroomName: String) => {
         const user = await Auth.currentAuthenticatedUser();
         const result = await Storage.get(`${user.attributes.sub}/${classroomId}/${answerSheetId}/student_ans_sheet-${classroomId}.pdf`, { download: true })
         const file_classroom = classroomName.replace(" ", "_");
         downloadBlob(result.Body, `student_ans_sheet-${file_classroom}.pdf`);
+
+    }
+
+    const studentAnswerSheet2S3 = async () => {
+
         
+        const user = await Auth.currentAuthenticatedUser();
+
+        try {
+            const res = await Storage.put(`${user.attributes.sub}/${classroomId}}/${uploadStudentAnswerSheetId}/stud_ans.pdf`, file, {
+                level: "private"
+            })
+            console.log(res);
+            const { data } = await API.graphql({
+                query: UploadStudentAnswerSheet,
+                variables: {
+                    classroomId: classroomId,
+                    sheetId: uploadStudentAnswerSheetId,
+                    teacherId: user.attributes.sub,
+                    file: {
+                        bucket: awsconfig.Storage.AWSS3.bucket,
+                        region: awsconfig.Storage.AWSS3.region,
+                        uri: `private/${user.attributes.sub}/${classroomId}}/${uploadStudentAnswerSheetId}/stud_ans.pdf`
+                    }
+                }
+            }) as GraphQLResult<UpdateStudentMutation>
+
+            console.log(data)
+            if (data?.uploadStudent.result)
+                setUploadModal(false);
+
+
+        } catch (err) {
+            setModalErrMes(`Upload Failed, ${err}`)
+        }
+
+    }
+
+
+    const onDropFile = async (acceptedFiles: File[], fileRejections: FileRejection[]) => {
+        setModalErrMes("");
+        setFile(null);
+        if (fileRejections.length >= 1)
+            setModalErrMes(fileRejections[0].errors.toString())
+        else
+            setFile(acceptedFiles[0])
+
     }
 
 
@@ -195,6 +250,54 @@ const ClassroomDetailPage = ({ room }: { room: Classroom }) => {
             {portalErrMes != "" ?
                 <ErrorAlert
                     mes={portalErrMes} />
+                : <></>
+            }
+            {uploadModal ?
+                <Modal
+                    header="Upload Student Answer"
+                >
+                    <React.Fragment>
+                        {modalErrMes != "" ?
+                            <ErrorAlert
+                                mes={modalErrMes} />
+                            : <></>
+                        }
+                        <UploadBox
+                            accept={[".pdf"]}
+                            maxSize={100 * 1024 * 1024}
+                            onDrop={onDropFile}
+                            maxFiles={1}>
+
+                            <React.Fragment>
+                                <p>Please Drop the student answered file here</p>
+                                <em>(Only *.pdf will be accepted)</em>
+                            </React.Fragment>
+
+
+                        </UploadBox>
+
+                        {file != null ?
+                            <div className="font-semibold mt-3">
+                                {`Name: ${file?.name}, SIZE: ${file?.size}`}
+                            </div>
+                            : <></>
+
+                        }
+                        <div className="mt-3 text-right">
+
+                            <div className="md:flex block justify-end">
+                                <button onClick={studentAnswerSheet2S3} className="rounded p-2 mt-3 cursor-pointer w-full md:w-auto md:px-8 border border-black">
+                                    Upload
+                                </button>
+
+                                <div className="md:ml-3 sm: mt-3">
+                                    <Button onClick={() => setUploadModal(false)}>Close</Button>
+                                </div>
+                            </div>
+                        </div>
+                    </React.Fragment>
+
+                </Modal>
                 : <></>
             }
             {classroom.students == null || classroom.students.length == 0 ?
@@ -258,20 +361,27 @@ const ClassroomDetailPage = ({ room }: { room: Classroom }) => {
 
                                                         : Number(sheet.status) == 5 ?
                                                             <React.Fragment>
+                                                                <Link href={`./${classroomId}/sheet/${sheet.id}`}>
+                                                                    <a target="_blank">
+                                                                        <button className="p-2  bg-violet-400 text-white rounded m-2">
+                                                                            <div className="flex">
+                                                                                <EyeIcon className="w-5" />
+                                                                                <span>View</span>
+                                                                            </div>
+                                                                        </button>
+                                                                    </a>
+                                                                </Link>
 
-                                                                <button className="p-2  bg-violet-400 text-white rounded m-2">
-                                                                    <div className="flex">
-                                                                        <EyeIcon className="w-5" />
-                                                                        <span>View</span>
-                                                                    </div>
-                                                                </button>
 
-                                                                <button className="p-2 bg-sky-400 text-white rounded m-2">
+                                                                <button className="p-2 bg-sky-400 text-white rounded m-2" onClick={() => {
+                                                                    setUploadStudentAnswerSheetId(sheet.id);
+                                                                    setUploadModal(true)
+                                                                }}>
                                                                     <CloudUploadIcon className="w-5" />
                                                                 </button>
 
                                                                 <button className="p-2 bg-black text-white rounded m-2" onClick={() => downloadStudentAnswerSheet(sheet.id, sheet.name)}>
-                                                                    <DocumentDownloadIcon className="w-5"/>
+                                                                    <DocumentDownloadIcon className="w-5" />
                                                                 </button>
 
                                                             </React.Fragment>

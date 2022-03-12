@@ -28,12 +28,12 @@ const getAnswerSheet = async (event:GetAnswerSheetEvent) => {
     try{
         const data = (await dynamodb.getItem(params).promise()).Item;
         if (data != null){
-            let answerSheet = DynamoDB.Converter.unmarshall(data);
-            let locates = [];
-            for(const locate of data.locate as Array<PDFAnnotation>)
-                locates.push(DynamoDB.Converter.unmarshall(locate as DynamoDB.AttributeMap))
-            answerSheet.locate = locates
-            return answerSheet
+            // let answerSheet = DynamoDB.Converter.unmarshall(data);
+            // let locates = [];
+            // for(const locate of data.locate as Array<PDFAnnotation>)
+            //     locates.push(DynamoDB.Converter.unmarshall(locate as DynamoDB.AttributeMap))
+            // answerSheet.locate = locates
+            return DynamoDB.Converter.unmarshall(data);
         }
             
     }catch(err){

@@ -43,6 +43,7 @@ export const getAnswerSheet = `
         p_width
         p_height
         answer_type
+        mark
       }
       type
       status

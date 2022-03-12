@@ -30,7 +30,7 @@ const getQuesiton = async (event:GetQuestionEvent) => {
         const data = (await dynamodb.getItem(params).promise()).Item;
         if (data != null){
             const covertedData = DynamoDB.Converter.unmarshall(data);
-            const resultIndex = covertedData.locate.findIndex( (obj: PDFAnnotation) => obj.id === event.id);
+            const resultIndex = covertedData.locate.findIndex( (obj: PDFAnnotation) => obj.qid === event.id);
             if (resultIndex < 0)
                 return null
             return covertedData.locate[resultIndex];

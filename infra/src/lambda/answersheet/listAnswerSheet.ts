@@ -37,7 +37,7 @@ const listAnswerSheert = async (event: ListAnswerSheetEvent) => {
             result.nextToken = Buffer.from(JSON.stringify(data.LastEvaluatedKey)).toString('base64')
         return result
     }     
-    return [];
+    return null;
 }
 
 export default listAnswerSheert;

@@ -47,6 +47,12 @@ const createAnswerSheet = async(event: CreateAnswerSheetEvent) => {
                 },
                 locate: {
                     L: []
+                },
+                lastJobId:{
+                    S: ""
+                },
+                page:{
+                    N:"0"
                 }
             }
         }

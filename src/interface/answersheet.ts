@@ -18,6 +18,7 @@ type PDFLocate = {
     answer: string
     answer_type: number
     page: number
+    mark: number
 }
 
 type File = {

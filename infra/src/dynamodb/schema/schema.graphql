@@ -71,7 +71,7 @@ type ClassroomConnection{
 # Answersheet
 
 type AnswerSheet {
-    qid: ID!
+    id: ID!
     type: Int
     classroomId: String!
     name: String!
@@ -99,7 +99,7 @@ input CreateAnswerSheetInput {
 
 # Answersheet->Question
 type PDFAnnotation{
-    id: ID!
+    qid: ID!
     tcode: String!
     x: Float!
     y: Float!
@@ -108,12 +108,14 @@ type PDFAnnotation{
     page: Int!
     answer: String
     answer_type: Int
+    mark: Int
 }
 
 input Question {
-    questionId: ID!,
-    answer: String,
+    qid: ID!
+    answer: String
     answer_type: Int
+    mark: Int
 }
 
 # Student Answer
@@ -155,6 +157,7 @@ type Query {
         @aws_cognito_user_pools
     listAnswerSheet(classroomId: ID!, limite: Int, nextToken: String): AnswerSheetConnection #
         @aws_cognito_user_pools
+
     listStudentAnswer(questionId: ID, limit: Int, nextToken: String): StudentAnswerConnection #
         @aws_cognito_user_pools
     
@@ -178,8 +181,12 @@ type Mutation{
         @aws_cognito_user_pools
     saveQuestion(classroomId: ID!, id: ID!, questions: [Question]! ): RequestResponse #
         @aws_cognito_user_pools
-  	startGrading(answerSheetId: ID!): RequestResponse
+  	
+    # startGrading(answerSheetId: ID!): RequestResponse
+    #     @aws_cognito_user_pools
+
+    uploadStudentAnswer(classroomId: ID!, sheetId: ID!, teacherId: ID!,  file: UploadFile!): RequestResponse
         @aws_cognito_user_pools
-  	saveGrading(grading: [Grading]): RequestResponse #
+    saveStudentAnswer(input: [Grading]!): RequestResponse
         @aws_cognito_user_pools
 }

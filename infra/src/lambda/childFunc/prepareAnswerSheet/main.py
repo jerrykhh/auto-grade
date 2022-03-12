@@ -65,7 +65,7 @@ def handler(event, context):
             if count == 4:
                 break
 
-    student_ans_sheet_file = s3.Object(event['file']["bucket"], f"public/{event['teacherId']}/{event['classroomId']}/{event['id']}/student_ans_sheet-{event['classroomId']}.pdf")
+    student_ans_sheet_file = s3.Object(event['file']["bucket"], f"public/{event['classroomId']}/{event['id']}/student_ans_sheet-{event['classroomId']}.pdf")
     student_ans_sheet_file.put(
         Body=student_ans_sheet.write()
     )

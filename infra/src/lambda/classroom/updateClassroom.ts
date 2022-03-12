@@ -14,7 +14,7 @@ const updateClassroom = async(classroom: Classroom) => {
                 S: classroom.id
             }
         },
-        UpdateExpression: "SET name = :name, description = :desc",
+        UpdateExpression: "SET #name = :name, #description = :desc",
         ExpressionAttributeValues: {
             ":name": {
                 S: classroom.name
@@ -22,6 +22,10 @@ const updateClassroom = async(classroom: Classroom) => {
             ":desc": {
                 S: classroom.description
             }
+        },
+        ExpressionAttributeNames: {
+            "#name": "name",
+            "#description": "description"
         },
         ReturnValues: "UPDATED_NEW"
     }

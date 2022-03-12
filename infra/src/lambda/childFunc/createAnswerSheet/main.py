@@ -98,9 +98,12 @@ def handler(event, context):
                         },
                         "answer_type": {
                             "N": f"{question['answer_type']}"
+                        },
+                        "mark": {
+                            "N": "0"
                         }
                     }})
-                
+                pages = pdf_file.page_count
                 print("update", locates)
                 dynamoDB.update_item(
                     TableName=os.environ["ANSWERSHEET_TABLE"],
@@ -112,13 +115,16 @@ def handler(event, context):
                             'S': event['classroomId']
                         }
                     },
-                    UpdateExpression="SET #status = :status, #locate = :locate",
+                    UpdateExpression="SET #status = :status, #locate = :locate, #page = :page",
                     ExpressionAttributeValues={
                         ':status':{
                             'N': '2'
                         },
                         ':locate':{
                             'L': locates
+                        },
+                        ':page': {
+                            'N': f"{pages}"
                         }
                     },
                     ExpressionAttributeNames={

@@ -19,3 +19,23 @@ export type CreateAnswerSheetMutation = {
         result: boolean
     }
 }
+
+export const saveQuestion = `
+    mutation SaveQuestion(
+        $id: ID!,
+        $classroomId: ID!,
+        $questions: [Question]!
+    ){
+        saveQuestion(classroomId: $classroomId, id: $id, questions: $questions){
+            msg
+            result
+        }
+    }
+`
+
+export type SaveQuestionMutation = {
+    saveQuestion : {
+        msg: string
+        result: boolean
+    }
+}
