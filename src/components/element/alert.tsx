@@ -1,6 +1,6 @@
 
 type AlertProps = {
-    mes: String
+    mes: String| string
 }
 
 export const ErrorAlert = ({mes}:AlertProps): JSX.Element => {

@@ -53,7 +53,7 @@ const uploadStudentAnswer = async (event: UploadStudentAnswer) => {
         },
         ExpressionAttributeValues: {
             ":status": {
-                S: '6'
+                N: '6'
             }
         }
     }

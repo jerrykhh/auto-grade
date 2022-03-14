@@ -57,9 +57,9 @@ const AnswerSheetCreatePage = () => {
         setLoading(true);
         const id = uuidv4();
         // try{
-        const user = await Auth.currentAuthenticatedUser();
+        const identityId = await (await Auth.currentUserCredentials()).identityId;
         try {
-            const s3Obj = await Storage.put(`${user.attributes.sub}/${classroomId}}/${id}.pdf`, uploadFile, {
+            const s3Obj = await Storage.put(`${classroomId}}/${id}.pdf`, uploadFile, {
                 level: "private"
             });
             console.log(s3Obj.key);
@@ -69,14 +69,14 @@ const AnswerSheetCreatePage = () => {
                 const { data } = await API.graphql({
                     query: CreateAnswerSheet,
                     variables: {
-                        teacherId: user.attributes.sub,
+                        teacherId: identityId,
                         classroomId: classroomId,
                         name: name,
                         type: Number(qType),
                         file: {
                             bucket: awsconfig.Storage.AWSS3.bucket,
                             region: awsconfig.Storage.AWSS3.region,
-                            uri: `private/${user.attributes.sub}/${classroomId}}/${id}.pdf`
+                            uri: `private/${identityId}/${classroomId}}/${id}.pdf`
                         }
                     }
                 }) as GraphQLResult<CreateAnswerSheetMutation>

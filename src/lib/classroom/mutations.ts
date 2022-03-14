@@ -36,3 +36,10 @@ export type UpdateStudentMutation = {
         result: boolean
     }
 }
+
+export type UpdateStudentAnswerMutation = {
+    uploadStudentAnswer: {
+        msg: string
+        result: boolean
+    }
+}

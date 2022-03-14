@@ -21,7 +21,7 @@ const listStudentAnswer = async (event: ListStudentAnswerEvent) => {
                 S: event.questionId
             }
         },
-        Limit: 50
+        Limit: 100
     };
 
     if (event.limit != null)

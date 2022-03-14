@@ -123,9 +123,9 @@ input Question {
 type StudentAnswer{
     questionId: String!
     studentId: String!
-    studentAnswer: String
+    answer: String
     grade: Float
-    file: S3Object
+    locate: S3Object
 }
 
 type StudentAnswerConnection{

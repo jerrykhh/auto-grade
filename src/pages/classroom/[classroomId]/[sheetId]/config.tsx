@@ -22,14 +22,15 @@ export const getServerSideProps: GetServerSideProps = async ({ req, query }) => 
 
     const { Auth, API } = withSSRContext({ req });
     try {
-        const user = await Auth.currentAuthenticatedUser();
+        const identityId = await (await Auth.currentUserCredentials()).identityId;
 
-        if (!user)
+
+        if (!identityId)
             throw new Error("Session not found");
 
         const res = {
             props: {
-                sub: user.attributes.sub,
+                sub: identityId,
                 answerSheet: {}
             }
         }
@@ -192,7 +193,6 @@ const SheetDetailPage = ({ sub, answerSheet }: { sub: string, answerSheet: Answe
         if (confirm("If leave the page, unsaved question will not save."))
             window.close()
             router.back();
-
     }
 
 
@@ -228,7 +228,7 @@ const SheetDetailPage = ({ sub, answerSheet }: { sub: string, answerSheet: Answe
                         {/* <div className="text-sm font-light">
                         created: {answerSheet.create_date}
                     </div> */}
-                        <div className=" self-stretch">
+                        <div className="self-stretch">
                             <span className="mr-4">Total Mark: {getTotalMark()}</span>
                             <button className="p-4 bg-zinc-700 text-white hover:bg-zinc-900" onClick={onSaveQuestion}>Save</button>
                         </div>

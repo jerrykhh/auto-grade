@@ -382,7 +382,8 @@ export class InfraStack extends cdk.Stack {
       minCapacity: 3,
       maxCapacity: 8
     });
-
+    
+    graphqlAPI.addDynamoDbDataSource("StudentAnswerDataSource",studentAnswerDDB);
 
 
     // Locate Student Answer Sheet
@@ -442,6 +443,7 @@ export class InfraStack extends cdk.Stack {
         },
       }),
       environment: {
+        REGION: cdk.Stack.of(this).region,
         ANSWERSHEET_TABLE: answerSheetDDB.tableName,
         STUDENTANSWER_TABLE: studentAnswerDDB.tableName,
         QRCODE_DECODEER: qrcodeDecoder.functionArn,
@@ -451,7 +453,7 @@ export class InfraStack extends cdk.Stack {
       memorySize: 256,
     });
 
-    answerSheetDDB.grantReadData(uploadStudentAnswerLambda);
+    answerSheetDDB.grantReadWriteData(uploadStudentAnswerLambda);
     locateStudentAnswerSheetDDB.grantWriteData(uploadStudentAnswerLambda);
     qrcodeDecoder.grantInvoke(uploadStudentAnswerLambda)
     studentAnswerDDB.grantWriteData(uploadStudentAnswerLambda)

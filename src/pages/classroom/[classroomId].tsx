@@ -5,14 +5,14 @@ import { useRouter } from "next/router"
 import React, { useEffect, useState, useCallback } from "react";
 import { FileRejection } from "react-dropzone";
 import SystemPage from "../../components/customize/template/SystemPage";
-import { ErrorAlert, WarningAlert } from "../../components/element/alert";
+import { ErrorAlert, SuccessAlert, WarningAlert } from "../../components/element/alert";
 import UploadBox from "../../components/input/uploadbox";
 import { AnswerSheet } from "../../interface/answersheet";
 import { Classroom } from "../../interface/classroom";
 import { Student } from "../../interface/student";
 import { listReviewAnswerSheet, ListReviewAnswerSheetQuery } from "../../lib/answersheet/queries";
 import { getClassroom } from "../../lib/classroom/queries";
-import { updateStudent, UpdateStudentMutation } from "../../lib/classroom/mutations";
+import { updateStudent, UpdateStudentAnswerMutation, UpdateStudentMutation } from "../../lib/classroom/mutations";
 import Table from "../../components/element/table";
 import Accordion from "../../components/element/accordion";
 import Modal from "../../components/element/modal";
@@ -23,6 +23,7 @@ import { TrashIcon } from "@heroicons/react/solid";
 import { downloadBlob } from "../../lib/download/downloadBlob"
 import { UploadStudentAnswerSheet } from "../../lib/studentAnswer/mutation";
 import awsconfig from "../../../aws-config";
+import Loader from "../../components/element/loader";
 
 export const getServerSideProps: GetServerSideProps = async ({ req, query }) => {
     console.log("server");
@@ -32,9 +33,10 @@ export const getServerSideProps: GetServerSideProps = async ({ req, query }) => 
 
     const { Auth, API } = withSSRContext({ req });
     try {
-        const user = await Auth.currentAuthenticatedUser();
+        const identityId = await (await Auth.currentUserCredentials()).identityId;
 
-        if (!user)
+
+        if (!identityId)
             throw new Error("Session not found");
 
         const res = {
@@ -49,7 +51,7 @@ export const getServerSideProps: GetServerSideProps = async ({ req, query }) => 
                 query: getClassroom,
                 variables: {
                     id: classroomId,
-                    teacherId: user.attributes.sub
+                    teacherId: identityId
                 }
             });
             console.log(data);
@@ -90,7 +92,10 @@ const ClassroomDetailPage = ({ room }: { room: Classroom }) => {
 
     const [classroom, setClassroom] = useState<Classroom>(room)
     const [answerSheets, setAnswerSheets] = useState<Array<AnswerSheet>>([]);
+    const [loadAnswerSheet, setLoadAnswerSheet] = useState<boolean>(true);
     const [portalErrMes, setPortalErrMes] = useState<String>("");
+    const [portalSucMes, setPortalSucMes] = useState<String>("");
+    
 
     const [uploadModal, setUploadModal] = useState<boolean>(false);
     const [file, setFile] = useState<File | null>(null);
@@ -98,17 +103,7 @@ const ClassroomDetailPage = ({ room }: { room: Classroom }) => {
     const [uploadStudentAnswerSheetId, setUploadStudentAnswerSheetId] = useState<String>("")
 
     useEffect(() => {
-        async function getAnswerSheets() {
-            const { data } = await API.graphql({
-                query: listReviewAnswerSheet,
-                variables: {
-                    classroomId: classroomId
-                }
-            }) as GraphQLResult<ListReviewAnswerSheetQuery>
-            if (data?.listAnswerSheet.items)
-                setAnswerSheets(data?.listAnswerSheet.items);
-        }
-        getAnswerSheets();
+        reloadAnswerSheet();
     }, [])
 
     const studentDataFileUpload = useCallback((accFiles: File[], rejectFiles: FileRejection[]) => {
@@ -162,12 +157,13 @@ const ClassroomDetailPage = ({ room }: { room: Classroom }) => {
     const uploadStudents = async (students: Array<Student>) => {
         console.log(students);
 
-        const user = await Auth.currentAuthenticatedUser();
+        const identityId = await (await Auth.currentUserCredentials()).identityId;
+
         try {
             const { data } = await API.graphql({
                 query: updateStudent,
                 variables: {
-                    teacherId: user.attributes.sub,
+                    teacherId: identityId,
                     id: classroomId,
                     student: students
 
@@ -188,20 +184,42 @@ const ClassroomDetailPage = ({ room }: { room: Classroom }) => {
 
 
     const downloadStudentAnswerSheet = async (answerSheetId: String, classroomName: String) => {
-        const user = await Auth.currentAuthenticatedUser();
-        const result = await Storage.get(`${user.attributes.sub}/${classroomId}/${answerSheetId}/student_ans_sheet-${classroomId}.pdf`, { download: true })
+        
+        const result = await Storage.get(`${classroomId}/${answerSheetId}/student_ans_sheet-${classroomId}.pdf`, { download: true })
         const file_classroom = classroomName.replace(" ", "_");
         downloadBlob(result.Body, `student_ans_sheet-${file_classroom}.pdf`);
 
     }
 
+    const reloadAnswerSheet = async () => {
+        initPortalMes();
+        setAnswerSheets([]);
+        setLoadAnswerSheet(true)
+        const { data } = await API.graphql({
+            query: listReviewAnswerSheet,
+            variables: {
+                classroomId: classroomId
+            }
+        }) as GraphQLResult<ListReviewAnswerSheetQuery>
+        if (data?.listAnswerSheet.items)
+            setAnswerSheets(data?.listAnswerSheet.items);
+        setLoadAnswerSheet(false);
+    }
+
+    const initPortalMes = () => {
+        setPortalErrMes("")
+        setPortalSucMes("");
+    }
+
     const studentAnswerSheet2S3 = async () => {
 
-        
-        const user = await Auth.currentAuthenticatedUser();
-
         try {
-            const res = await Storage.put(`${user.attributes.sub}/${classroomId}}/${uploadStudentAnswerSheetId}/stud_ans.pdf`, file, {
+            const identityId = await (await Auth.currentUserCredentials()).identityId;
+            console.log(identityId);
+            
+            const uri = `${classroomId}/${uploadStudentAnswerSheetId}/stud_ans.pdf`;
+
+            const res = await Storage.put(uri, file, {
                 level: "private"
             })
             console.log(res);
@@ -210,18 +228,21 @@ const ClassroomDetailPage = ({ room }: { room: Classroom }) => {
                 variables: {
                     classroomId: classroomId,
                     sheetId: uploadStudentAnswerSheetId,
-                    teacherId: user.attributes.sub,
+                    teacherId: identityId,
                     file: {
                         bucket: awsconfig.Storage.AWSS3.bucket,
                         region: awsconfig.Storage.AWSS3.region,
-                        uri: `private/${user.attributes.sub}/${classroomId}}/${uploadStudentAnswerSheetId}/stud_ans.pdf`
+                        uri: `private/${identityId}/${uri}`
                     }
                 }
-            }) as GraphQLResult<UpdateStudentMutation>
+            }) as GraphQLResult<UpdateStudentAnswerMutation>
 
             console.log(data)
-            if (data?.uploadStudent.result)
+            if (data?.uploadStudentAnswer.result){
+                setPortalSucMes(`${uploadStudentAnswerSheetId}, ${data.uploadStudentAnswer.msg}`)
                 setUploadModal(false);
+                reloadAnswerSheet();
+            }
 
 
         } catch (err) {
@@ -232,7 +253,7 @@ const ClassroomDetailPage = ({ room }: { room: Classroom }) => {
 
 
     const onDropFile = async (acceptedFiles: File[], fileRejections: FileRejection[]) => {
-        setModalErrMes("");
+        initPortalMes();
         setFile(null);
         if (fileRejections.length >= 1)
             setModalErrMes(fileRejections[0].errors.toString())
@@ -251,6 +272,12 @@ const ClassroomDetailPage = ({ room }: { room: Classroom }) => {
                 <ErrorAlert
                     mes={portalErrMes} />
                 : <></>
+            }
+            {portalSucMes != "" ?
+                <SuccessAlert
+                    mes={portalSucMes} />
+                :<></>
+
             }
             {uploadModal ?
                 <Modal
@@ -322,10 +349,15 @@ const ClassroomDetailPage = ({ room }: { room: Classroom }) => {
                 :
 
                 <React.Fragment>
-                    <Button onClick={() => router.push({
-                        pathname: '/classroom/[classroomId]/sheet',
-                        query: { classroomId: classroomId }
-                    })}>Create Answer Sheet</Button>
+                    <div className="md:flex">
+                        <Button onClick={() => router.push({
+                            pathname: '/classroom/[classroomId]/sheet',
+                            query: { classroomId: classroomId }
+                        })}>Create Answer Sheet</Button>
+                        <button className=" bg-gray-50 border border-gray-700 rounded p-2 w-full my-3 md:w-auto md:ml-5 md:my-0" onClick={() => reloadAnswerSheet()}>Reload</button>
+                    </div>
+                    
+                    
                     <div className="row">
                         <Table
                             title="Answer Sheet">
@@ -338,7 +370,11 @@ const ClassroomDetailPage = ({ room }: { room: Classroom }) => {
                                 {answerSheets.length == 0 ?
                                     <Table.Row>
                                         <Table.Cell colSpan={3} className="text-center px-6 py-4 ">
-                                            <span>No any data here</span>
+                                            {loadAnswerSheet?
+                                                <Loader show={loadAnswerSheet} />
+                                                :
+                                                <span>No any data here</span>
+                                            }
                                         </Table.Cell>
                                     </Table.Row>
                                     : answerSheets.map((sheet: AnswerSheet, index: number) => {
@@ -348,9 +384,12 @@ const ClassroomDetailPage = ({ room }: { room: Classroom }) => {
                                                 {Number(sheet.status) < 1 ?
                                                     <Table.Cell>Failed</Table.Cell>
                                                     :
-                                                    Number(sheet.status) == 5 ?
+                                                    Number(sheet.status) == 5 ||  Number(sheet.status) == 8?
                                                         <Table.Cell>Completed</Table.Cell>
-                                                        : <Table.Cell>Preparing...</Table.Cell>
+                                                        :
+                                                        Number(sheet.status) == 7 ?
+                                                            <Table.Cell>Detecting...</Table.Cell>
+                                                            : <Table.Cell>Preparing...</Table.Cell>
                                                 }
                                                 <Table.Cell>
                                                     {Number(sheet.status) < 1 ?
@@ -359,30 +398,39 @@ const ClassroomDetailPage = ({ room }: { room: Classroom }) => {
                                                             <CloudUploadIcon className="w-5" /> Upload Answer Sheet
                                                         </button>
 
-                                                        : Number(sheet.status) == 5 ?
+                                                        : Number(sheet.status) >= 5 ?
                                                             <React.Fragment>
-                                                                <Link href={`./${classroomId}/sheet/${sheet.id}`}>
-                                                                    <a target="_blank">
-                                                                        <button className="p-2  bg-violet-400 text-white rounded m-2">
-                                                                            <div className="flex">
-                                                                                <EyeIcon className="w-5" />
-                                                                                <span>View</span>
-                                                                            </div>
+
+                                                                {Number(sheet.status) != 7 ?
+                                                                    <Link href={Number(sheet.status) == 5 ? `./${classroomId}/${sheet.id}/config` : `./${classroomId}/${sheet.id}/`}>
+                                                                        <a target="_blank">
+                                                                            <button className="p-2  bg-violet-400 text-white rounded m-2">
+                                                                                <div className="flex">
+                                                                                    <EyeIcon className="w-5" />
+                                                                                    <span>View</span>
+                                                                                </div>
+                                                                            </button>
+                                                                        </a>
+                                                                    </Link>
+                                                                    : <></>
+                                                                }
+                                                                {Number(sheet.status) == 5 ?
+                                                                    <React.Fragment>
+                                                                        <button className="p-2 bg-sky-400 text-white rounded m-2" onClick={() => {
+                                                                            setUploadStudentAnswerSheetId(sheet.id);
+                                                                            setUploadModal(true)
+                                                                        }}>
+                                                                            <CloudUploadIcon className="w-5" />
                                                                         </button>
-                                                                    </a>
-                                                                </Link>
 
+                                                                        <button className="p-2 bg-black text-white rounded m-2" onClick={() => downloadStudentAnswerSheet(sheet.id, sheet.name)}>
+                                                                            <DocumentDownloadIcon className="w-5" />
+                                                                        </button>
+                                                                    </React.Fragment>
+                                                                    : <></>
 
-                                                                <button className="p-2 bg-sky-400 text-white rounded m-2" onClick={() => {
-                                                                    setUploadStudentAnswerSheetId(sheet.id);
-                                                                    setUploadModal(true)
-                                                                }}>
-                                                                    <CloudUploadIcon className="w-5" />
-                                                                </button>
+                                                                }
 
-                                                                <button className="p-2 bg-black text-white rounded m-2" onClick={() => downloadStudentAnswerSheet(sheet.id, sheet.name)}>
-                                                                    <DocumentDownloadIcon className="w-5" />
-                                                                </button>
 
                                                             </React.Fragment>
                                                             : <></>

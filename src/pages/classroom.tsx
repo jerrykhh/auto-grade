@@ -18,13 +18,13 @@ import { EyeIcon } from "@heroicons/react/solid";
 export const getServerSideProps: GetServerSideProps = async ({ req }) => {
     const { Auth, API } = withSSRContext({ req });
     try {
-        const user = await Auth.currentAuthenticatedUser();
-        console.log(user);
+        const identityId = await (await Auth.currentUserCredentials()).identityId;
+        console.log(identityId);
 
         const { data } = await API.graphql({
             query: listReviewClassroom,
             variables: {
-                teacherId: user.attributes.sub
+                teacherId: identityId
             }
         })
         
@@ -70,20 +70,19 @@ const Classroom = ({ rooms }: { rooms: Array<Classroom> }) => {
 
         try {
 
-            let user = null;
+            let identityId = null;
             try {
-                user = await Auth.currentAuthenticatedUser();
+                identityId = await (await Auth.currentUserCredentials()).identityId;
             } catch {
                 router.push("/");
             }
 
-            if (user) {
-
+            if (identityId) {
                 const newClassroom = await API.graphql({
                     query: createClassroom,
                     variables: {
                         classroom: {
-                            teacherId: user.attributes.sub,
+                            teacherId: identityId,
                             name: classroomName,
                             description: classroomDesc
                         }

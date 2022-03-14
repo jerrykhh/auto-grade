@@ -17,7 +17,33 @@ def dynamo_obj_to_python_obj(dynamo_obj: dict) -> dict:
     }
 
 def handler(event, context): 
-    print(event)
+    dynamoDB.update_item(
+            TableName=os.environ["ANSWERSHEET_TABLE"],
+            Key={
+                "id": {
+                    "S": event["sheetId"]
+                },
+                "classroomId": {
+                    "S": event["classroomId"]
+                }
+            },
+            UpdateExpression="SET #status = :status, #lastJobId = :lastJobId",
+            ExpressionAttributeValues={
+                            ':lastJobId':{
+                                'S': last_job_id
+
+                            },
+                            ':status':{
+                                'N':  "7"
+                                
+                            }
+                        },
+            ExpressionAttributeNames={
+                            "#lastJobId": "lastJobId",
+                            "#status": "status"
+                        }
+            )
+    
     response = dynamoDB.get_item(
         TableName=os.environ["ANSWERSHEET_TABLE"],
         Key={
@@ -41,12 +67,14 @@ def handler(event, context):
     print("qrcode", qrcode)
     
     if qrcode is not None:
+        print(event['file'])
         src_file = fitz.open(
             stream=s3.Object(event['file']["bucket"], event['file']["uri"]).get()['Body'].read(),
             filetype="pdf")
         pdf = fitz.open()
         
         count = src_file.page_count
+        last_job_id = ""
         
         for i in range(0, count):
             pdf.insert_pdf(src_file, from_page=0, to_page=int(data["page"])-1)
@@ -83,12 +111,14 @@ def handler(event, context):
                             'S3Prefix': f"private/{event['teacherId']}/{event['classroomId']}/{event['sheetId']}/predict"
                         },
                     )
-                print(res_textract)
+                last_job_id = res_textract['JobId']
                 
                 uploaded_file = s3.Object(event["file"]["bucket"], f"tmp/{res_textract['JobId']}.jpg")
                 uploaded_file.put(
                             Body=cropped_img.tobytes(output="jpg"))
                 pdf = fitz.open()
+        
+        
                 
         
         
