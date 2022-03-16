@@ -11,7 +11,7 @@ type SaveStudetAnswerEvent = {
     input: Array<Grading>
 }
 
-const SaveStudentAnswer = async (event: SaveStudetAnswerEvent) => {
+const saveStudentAnswer = async (event: SaveStudetAnswerEvent) => {
 
     const failed = [];
 
@@ -60,6 +60,6 @@ const SaveStudentAnswer = async (event: SaveStudetAnswerEvent) => {
             "msg": JSON.stringify(failed)
         }
     }
-
-
 }
+
+export default saveStudentAnswer;

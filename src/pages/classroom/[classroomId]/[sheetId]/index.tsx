@@ -2,17 +2,18 @@ import { API, Auth, withSSRContext } from "aws-amplify";
 import { GraphQLResult } from "@aws-amplify/api-graphql";
 import { GetServerSideProps } from "next";
 import { getAnswerSheet, GetAnswerSheetQuery } from "../../../../lib/answersheet/queries";
-import { AnswerSheet } from "../../../../interface/answersheet";
+import { AnswerSheet, SKIP_TCODE } from "../../../../interface/answersheet";
 import Page from "../../../../components/layout/Page";
 import React, { useEffect, useRef, useState } from "react";
 import router, { useRouter } from "next/router";
 import { XIcon } from "@heroicons/react/solid";
-import { StudentAnswer } from "../../../../interface/studentAnswer";
+import { Grading, StudentAnswer } from "../../../../interface/studentAnswer";
 import { listStudentAnswer, ListStudentAnswerQuery } from "../../../../lib/studentAnswer/queries";
 import Loader from "../../../../components/element/loader";
 import InfiniteScroll from 'react-infinite-scroll-component';
+import { SaveStudentAnswer, SaveStudentAnswerSheetMutation } from "../../../../lib/studentAnswer/mutation";
+import SheetImageView from "../../../../components/customize/element/SheetImageView";
 
-const SKIP_TCODE: Array<string> = ["studentid", "classroom", "name", "code"];
 
 export const getServerSideProps: GetServerSideProps = async ({ req, query }) => {
     const { sheetId, classroomId } = query;
@@ -56,12 +57,13 @@ export const getServerSideProps: GetServerSideProps = async ({ req, query }) => 
 
             const answerSheet = data.getAnswerSheet;
             const locates = [];
-            for(const locate of answerSheet.locate!){
-                if(!SKIP_TCODE.includes(locate.tcode))
+            for (const locate of answerSheet.locate!) {
+                if (!SKIP_TCODE.includes(locate.tcode))
                     locates.push(locate)
             }
             answerSheet.locate = locates;
             res.props.answerSheet = answerSheet;
+
 
 
 
@@ -97,8 +99,11 @@ const GradePage = ({ answerSheet }: { answerSheet: AnswerSheet }) => {
     const [portalSucMes, setPortalSucMes] = useState<string>();
     const [portalFailMes, setProtalFailMes] = useState<string>();
 
+    const [orginGradingQuestion, setOrginGradinQuestion] = useState<GradingStudentAnswer>({});
     const [gradingQuestion, setGradingQuestion] = useState<GradingStudentAnswer>({});
     const [currQuestionIdx, setCurrQuestionIdx] = useState<number>(0);
+
+
 
     const headerRef = useRef<HTMLDivElement>();
     const bodyRef = useRef<HTMLDivElement>();
@@ -115,7 +120,7 @@ const GradePage = ({ answerSheet }: { answerSheet: AnswerSheet }) => {
 
     const getGradeSheetSize = (): number => {
         let count = 0
-        for(const key in gradingQuestion)
+        for (const key in gradingQuestion)
             count += gradingQuestion[key].length;
         return count;
     }
@@ -131,25 +136,41 @@ const GradePage = ({ answerSheet }: { answerSheet: AnswerSheet }) => {
         }
         if (chkAnswer != null) {
             console.log(chkAnswer);
-            
+
+            const updatedStudentAnswers = [];
+
             for (let i = 0; i < studentAnswers.length; i++) {
-                if (studentAnswers[i].answer.toLowerCase().trim() == chkAnswer.answer.toLowerCase().trim())
-                    studentAnswers[i].grade = Number(grade);
+
+                let updateGrade = studentAnswers[i].grade;
+                if (studentAnswers[i].answer.toLowerCase().trim() == chkAnswer.answer.toLowerCase().trim()) {
+                    updateGrade = Number(grade);
+                }
+
+                updatedStudentAnswers.push({
+                    questionId: studentAnswers[i].questionId,
+                    studentId: studentAnswers[i].studentId,
+                    answer: studentAnswers[i].answer,
+                    grade: updateGrade,
+                    locate: studentAnswers[i].locate
+                })
             }
+
             console.log("updateing");
-            
-            const newGraded = Object.assign({}, gradingQuestion);
-            newGraded[qid] = studentAnswers;
-            console.log("new",newGraded);
-            
+
+            const newGraded = { ...gradingQuestion };
+            newGraded[qid] = updatedStudentAnswers;
+            console.log("new", newGraded);
+            console.log("orgin", orginGradingQuestion);
+
             setGradingQuestion(newGraded);
+
         }
 
     }
 
     const getMaxMark = (qid: string): number => {
-        for(const locate of answerSheet.locate!){
-            if(locate.qid == qid)
+        for (const locate of answerSheet.locate!) {
+            if (locate.qid == qid)
                 return locate.mark
         }
         return 0;
@@ -157,14 +178,12 @@ const GradePage = ({ answerSheet }: { answerSheet: AnswerSheet }) => {
 
     const fetechQuestion = async () => {
         console.log("idx", currQuestionIdx);
-        
-        
 
         if (currQuestionIdx < answerSheet.locate!.length) {
             const qid = answerSheet.locate![currQuestionIdx].qid;
             // const user = await Auth.currentAuthenticatedUser();
             console.log(qid);
-            
+
             const { data } = await API.graphql({
                 query: listStudentAnswer,
                 variables: {
@@ -173,27 +192,83 @@ const GradePage = ({ answerSheet }: { answerSheet: AnswerSheet }) => {
                 }
             }) as GraphQLResult<ListStudentAnswerQuery>
 
-            if (data?.listStudentAnswer.items){
-                
+            if (data?.listStudentAnswer.items) {
+
                 const tmpQuestion = Object.assign({}, gradingQuestion);
-                tmpQuestion[qid] = data?.listStudentAnswer.items
+                tmpQuestion[qid] = [...data.listStudentAnswer.items]
                 setGradingQuestion(tmpQuestion)
                 console.log(tmpQuestion);
-                setCurrQuestionIdx(currQuestionIdx => currQuestionIdx+1);
+                setCurrQuestionIdx(currQuestionIdx => currQuestionIdx + 1);
                 console.log("idx", currQuestionIdx);
+
+                // orgin save
+                const tmpOrginQuestion = { ...orginGradingQuestion };
+                const tmpStudentAnswers = [...data.listStudentAnswer.items]
+                tmpOrginQuestion[qid] = tmpStudentAnswers;
+                setOrginGradinQuestion(tmpOrginQuestion)
+                console.log("fetech", tmpOrginQuestion);
+
             }
 
-        } 
+        }
     }
 
     useEffect(() => {
+        console.log("useEffect");
+
         bodyOffsetY();
         fetechQuestion();
     }, []);
 
     const onSave = async () => {
-        console.log("save");
-        
+        const save: Array<Grading> = [];
+        Object.entries(gradingQuestion).map(([key, i]) => {
+            const graded = gradingQuestion[key];
+            const orgin = orginGradingQuestion[key];
+
+            for (let i = 0; i < graded.length; i++) {
+                console.log("loop");
+                console.log(graded[i].grade, orgin[i].grade);
+
+                if (graded[i].grade != orgin[i].grade) {
+                    console.log(graded[i].studentId);
+
+                    save.push({
+                        questionId: graded[i].questionId,
+                        studentId: graded[i].studentId,
+                        grade: graded[i].grade
+                    })
+                }
+            }
+        })
+        console.log("save", save);
+
+        const { data } = await API.graphql({
+            query: SaveStudentAnswer,
+            variables: {
+                input: save
+            }
+        }) as GraphQLResult<SaveStudentAnswerSheetMutation>
+        console.log(data);
+
+        if (data?.saveStudentAnswer.result) {
+            setPortalSucMes("saved at " + new Date().toLocaleString())
+            // orgin key update missing
+
+            const tmpOrgin = Object.assign({}, orginGradingQuestion);
+
+            for (const saved of save) {
+                for (let i = 0; i < tmpOrgin[saved.questionId].length; i++) {
+                    if (tmpOrgin[saved.questionId][i].studentId == saved.studentId)
+                        tmpOrgin[saved.questionId][i].grade = saved.grade
+                }
+            }
+            setOrginGradinQuestion(tmpOrgin)
+
+
+        } else {
+            setProtalFailMes("save failed, try again later")
+        }
     }
 
 
@@ -228,39 +303,50 @@ const GradePage = ({ answerSheet }: { answerSheet: AnswerSheet }) => {
 
                 <div ref={bodyRef as React.LegacyRef<HTMLDivElement>} className="p-5">
                     <div className="container m-auto max-w-6xl">
+                    <InfiniteScroll
+                            dataLength={getGradeSheetSize()} //This is important field to render the next data
+                            next={fetechQuestion}
+                            //hasMore={false}
+                            hasMore={(currQuestionIdx< answerSheet.locate!.length? true: false)}
+                            loader={<div className="w-full p-5"> <Loader show={true}/></div>}
+                            endMessage={
+                                <p className="w-full text-center">
+                                    <span>- End -</span>
+                                </p>
+                            }
+                            >
 
+                        {
+                            Object.entries(gradingQuestion).map(([key, value]) => {
+                                const answers = gradingQuestion[key];
+                                const maxMark = getMaxMark(key);
+                                console.log("here", answers);
 
-                    {
-                                Object.entries(gradingQuestion).map(([key, value]) => {
-                                    const answers = gradingQuestion[key];
-                                    const maxMark = getMaxMark(key);
-                                    console.log("here", answers);
-                                
-                                    return answers.map((answer, i) => (
-                                        
-                                            <div className="w-full lg:flex mb-10" key={i} >
-                                            <div className="w-full lg:flex-col lg:w-9/12 md:mr-4">
-                                                {/* <SheetImageView src={`${sub}/${classroomId}/${sheetId}/${sheet.qid}.jpg`} /> */}
-                                            </div>
-                                            <div className="w-full lg:flex-col lg:w-3/12 border-gray-300 bg-gray-100 lg:border p-5 sm:border-t-0">
-                                                <div className="flex lg:justify-center lg:items-center justify-end">
-                                                <input type="number" min={0} max={maxMark} value={answer.grade}  step="0.5" className="w-40 h-32 p-8 text-6xl border-gray-400 border appearance-none" 
+                                return answers.map((answer, i) => (
+
+                                    <div className="w-full lg:flex mb-10" key={i} >
+                                        <div className="w-full lg:flex-col lg:w-9/12 md:mr-4">
+                                            <SheetImageView src={answer.locate.uri} />
+                                        </div>
+                                        <div className="w-full lg:flex-col lg:w-3/12 border-gray-300 bg-gray-100 lg:border p-5 sm:border-t-0">
+                                            <div className="flex lg:justify-center lg:items-center justify-end h-full">
+                                                <input type="number" min={0} max={maxMark} value={answer.grade} step="0.5" className="w-40 h-32 p-8 text-6xl border-gray-400 border appearance-none"
                                                     onChange={(e) => {
-                                                        onGrading(key,answer.studentId, e.currentTarget.value)
-                                                    }} 
-                                                    onClick={e => e.currentTarget.select()} /> 
+                                                        onGrading(key, answer.studentId, e.currentTarget.value)
+                                                    }}
+                                                    onClick={e => e.currentTarget.select()} />
                                                 <span className="self-end mb-5 ml-2">{` / ${maxMark}`}</span>
-                                                </div>
                                             </div>
                                         </div>
-                                        )
-                                    )
-                                    
+                                    </div>
+                                )
+                                )
 
-                                })
-                            }
 
-                            
+                            })
+                        }
+                        </InfiniteScroll>
+
 
 
 

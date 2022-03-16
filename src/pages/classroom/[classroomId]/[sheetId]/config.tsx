@@ -260,7 +260,6 @@ const SheetDetailPage = ({ sub, answerSheet }: { sub: string, answerSheet: Answe
                                                             {answers[sheet.qid].answer_type == 2 ?
                                                                 <DropdownItem value={2} selected>Essay Quesion</DropdownItem>
                                                                 : <DropdownItem value={2}>Essay Quesion</DropdownItem>
-
                                                             }
                                                         </DropdownList>
 
@@ -289,44 +288,5 @@ const SheetDetailPage = ({ sub, answerSheet }: { sub: string, answerSheet: Answe
         </Page>
     )
 }
-
-const SheetImageView = ({ ...props }: ImageProps): JSX.Element => {
-
-    const [loading, setLoading] = useState<boolean>(true);
-    const [src, setSrc] = useState<string>();
-
-    useEffect(() => {
-
-        const getImageURL = async () => {
-            const signedUrl = await Storage.get(props.src as string);
-            console.log(signedUrl);
-            setLoading(false);
-            setSrc(signedUrl)
-
-        }
-        getImageURL();
-    }, [])
-
-    return (
-        <React.Fragment>
-
-
-            <div className="p-5 border border-gray-300 bg-gray-100">
-                {loading ?
-                    <div className="p-5">
-                        <Loader show={loading} />
-                    </div>
-                    :
-                    <div className="max-w-full h-auto">
-                        <img src={src as string} className="object-contain block m-auto border border-black" alt={props.alt} />
-                    </div>
-                }
-            </div>
-
-        </React.Fragment >
-    )
-
-}
-
 
 export default SheetDetailPage;

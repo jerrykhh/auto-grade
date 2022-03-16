@@ -139,6 +139,19 @@ input Grading{
   grade: Float!
 }
 
+# StudentAnswerSheet
+
+type StudentAnswerSheetLocate {
+    answerSheetId: ID!
+    studentId: ID!
+    locate: S3Object
+}
+
+type StudentAnswerSheetLocateConnection {
+    items: [StudentAnswerSheetLocate]
+    nextToken: String
+}
+
 # Query & Mutation
 
 type RequestResponse{
@@ -161,6 +174,8 @@ type Query {
     listStudentAnswer(questionId: ID, limit: Int, nextToken: String): StudentAnswerConnection #
         @aws_cognito_user_pools
     
+    listStudentAnswerSheet(answerSheetId: ID, limit: Int, nextToken: String): StudentAnswerSheetLocateConnection
+        @aws_cognito_user_pools
     #downloadStudentAnswerSheet(id: ID!, classroomId: ID!): StudentAnswerSheet
 }
 

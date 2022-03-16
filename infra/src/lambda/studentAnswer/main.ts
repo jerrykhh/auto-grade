@@ -1,5 +1,8 @@
 import listStudentAnswer from "./listStudentAnswer";
 import uploadStudentAnswer from "./uploadStudentAnswer"
+import saveStudentAnswer from "./saveStudentAnswer"
+import {Grading} from "./interface"
+
 type AppsyncEvent = {
     info: {
         fieldName: string
@@ -18,6 +21,8 @@ type AppsyncEvent = {
         questionId: string,
         limit: number,
         nextToken: string
+
+        input: Array<Grading>
     }
 }
 
@@ -36,6 +41,10 @@ exports.handler = async (event: AppsyncEvent) => {
                 questionId: event.arguments.questionId,
                 limit: event.arguments.limit,
                 nextToken: event.arguments.nextToken
+            });
+        case "saveStudentAnswer":
+            return await saveStudentAnswer({
+                input: event.arguments.input
             })
 
         default:

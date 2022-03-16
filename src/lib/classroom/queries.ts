@@ -1,3 +1,5 @@
+import { Student } from "../../interface/student"
+
 export const listReviewClassroom = `
   query ListClassroom(
       $teacherId: ID!
@@ -55,3 +57,27 @@ export const getClassroom = `
       }
     }
 `
+
+export const getClassroomStudents = `
+  query GetClassroom(
+    $id: ID!
+    $teacherId: ID!
+  ){
+    getClassroom(id: $id, teacherId: $teacherId) {
+      students {
+        email
+        id
+        name
+      }
+    }
+  }
+
+`
+
+export type getClassroomStudentsQuery = {
+
+  getClassroom: {
+    students: Array<Student>
+  }
+
+}

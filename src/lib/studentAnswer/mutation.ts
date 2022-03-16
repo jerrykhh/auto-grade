@@ -18,3 +18,21 @@ export type UploadStudentAnswerSheetMutation = {
         msg: string
     }
 }
+
+export const SaveStudentAnswer = `
+    mutation SaveStudentAnswer(
+        $input: [Grading]!
+    ){
+        saveStudentAnswer(input: $input){
+            result
+            msg
+        }
+    }
+`
+
+export type SaveStudentAnswerSheetMutation = {
+    saveStudentAnswer : {
+        result: boolean
+        msg: string
+    }
+}

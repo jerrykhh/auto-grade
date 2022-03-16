@@ -371,7 +371,9 @@ const ClassroomDetailPage = ({ room }: { room: Classroom }) => {
                                     <Table.Row>
                                         <Table.Cell colSpan={3} className="text-center px-6 py-4 ">
                                             {loadAnswerSheet?
-                                                <Loader show={loadAnswerSheet} />
+                                                <div className="p-3">
+                                                     <Loader show={loadAnswerSheet} />
+                                                </div>
                                                 :
                                                 <span>No any data here</span>
                                             }

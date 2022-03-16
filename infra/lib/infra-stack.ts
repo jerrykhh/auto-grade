@@ -411,6 +411,24 @@ export class InfraStack extends cdk.Stack {
       maxCapacity: 4
     });
 
+    const studentAnswerSheetLambda = new lambda.Function(this, "StudentAnswerSheetLambda", {
+      runtime: lambda.Runtime.NODEJS_14_X,
+      handler: 'main.handler',
+      code: lambda.Code.fromAsset('./src/lambda/studentAnswerSheet'),
+      environment: {
+        REGION: cdk.Stack.of(this).region,
+        STUDENTANSWERSHEET_TABLE: locateStudentAnswerSheetDDB.tableName
+      }
+    });
+
+    const studentAnswerSheetDS = graphqlAPI.addLambdaDataSource("lambdaStudentAnswerSheetDataSource", studentAnswerSheetLambda);
+    locateStudentAnswerSheetDDB.grantReadData(studentAnswerSheetLambda);
+
+    studentAnswerSheetDS.createResolver({
+      typeName: "Query",
+      fieldName: "listStudentAnswerSheet"
+    })
+
 
 
     // SNS

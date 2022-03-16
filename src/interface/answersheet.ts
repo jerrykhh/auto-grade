@@ -26,3 +26,5 @@ type File = {
     region: string
     uri: string
 }
+
+export const SKIP_TCODE: Array<string> = ["studentid", "classroom", "name", "code"];

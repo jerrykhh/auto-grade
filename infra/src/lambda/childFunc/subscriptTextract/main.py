@@ -169,39 +169,61 @@ def handler(event, context):
                 
                 tcode = question["tcode"]
                 
+                img_key = uuid.uuid4()
+                uri = f"{classroomId}/{sheetId}/{img_key}.jpg"
+                # question_img = s3.Object("auto-grade-app-storage", uri)
+                question_img = s3.Object(textract_job["DocumentLocation"]["S3Bucket"], uri)
+                print(question)
+                page = src_pdf_file.load_page(int(question['page'])-1)
+                page.set_cropbox(fitz.Rect(question['x'], question['y'], question['p_height'], question['p_width']))
+                cropped_img = page.get_pixmap(matrix=fitz.Matrix(3, 3))
+                question_img.put(Body=cropped_img.tobytes(output="jpg"))
+                
                 for key in std_ans.keys():
                     if str(key).strip().lower() == tcode or  ''.join(e for e in str(key) if e.isalnum()) == tcode:
-                        
-                        # dynamoDB.update_item(
-                        #     TableName=os.environ["LOCATESTUDENTANSWERSHEET_TABLE"],
-                        #     Key={
-                        #         "answerSheetId": {
-                        #             'S': sheetId
-                        #         },
-                        #         "studentId": {
-                        #             'S': studentId
-                        #         }
-                        #     },
-                        #     UpdateExpression="SET #locate = :locate",
-                        #     ExpressionAttributeValues={
-                        #         ':locate':{
-                        #             'M': {
-                        #                 "bucket": {
-                        #                     'S': "auto-grade-app-storage"
-                        #                 },
-                        #                 "file": {
-                        #                     'S': "private/6de9b4a0-7d10-4055-80a9-9eab7933bf7b/45b89c18-2e6a-447f-a1d3-5b52053927a5/9fe8ba4f-5152-40f2-8181-1790b65a0829/885467ff-44bb-4394-9f73-2654d4d316d5.pdf"
-                        #                 }
-                                        
-                        #             }
-                        #         }
-                        #     },
-                        #     ExpressionAttributeNames={
-                        #         "#locate": "locate"
-                        #     }
-                        # )
-                        
-                        dynamoDB.update_item(
+                        ans = str(std_ans[key]).strip()
+                        break
+                
+                dynamoDB.update_item(
+                        TableName=os.environ["STUDENTANSWER_TABLE"],
+                        Key={
+                            "questionId": {
+                                'S': question["qid"]
+                            },
+                            'studentId': {
+                                'S': studentId
+                            }
+                        },
+                        UpdateExpression="SET #answer = :answer, #locate = :locate, #grade = :grade",
+                        ExpressionAttributeValues={
+                            ':answer':{
+                                'S': ans
+                            },
+                            ':locate':{
+                                'M': {
+                                    "bucket": {
+                                        'S': textract_job["DocumentLocation"]["S3Bucket"]
+                                    },
+                                    "region": {
+                                        'S': os.environ["REGION"]
+                                    },
+                                    "uri": {
+                                        'S': uri
+                                    }
+                                }
+                            },
+                            ":grade":{
+                                'N': "0"
+                            }
+                        },
+                        ExpressionAttributeNames={
+                            "#answer": "answer",
+                            "#locate": "locate",
+                            "#grade": "grade"
+                        }
+                    )
+            
+            dynamoDB.update_item(
                             TableName=os.environ["LOCATESTUDENTANSWERSHEET_TABLE"],
                             Key={
                                 "answerSheetId": {
@@ -218,7 +240,10 @@ def handler(event, context):
                                         "bucket": {
                                             'S': textract_job["DocumentLocation"]["S3Bucket"]
                                         },
-                                        "file": {
+                                        "region": {
+                                            'S': os.environ["REGION"]  
+                                        },
+                                        "uri": {
                                             'S': textract_job["DocumentLocation"]["S3ObjectName"]
                                         }
                                         
@@ -229,85 +254,38 @@ def handler(event, context):
                                 "#locate": "locate"
                             }
                         )
-                        
-                        img_key = uuid.uuid4()
-                        uri = f"public/{classroomId}/{sheetId}/{img_key}.jpg"
-                        # question_img = s3.Object("auto-grade-app-storage", uri)
-                        question_img = s3.Object(textract_job["DocumentLocation"]["S3Bucket"], uri)
-                        print(question)
-                        page = src_pdf_file.load_page(int(question['page'])-1)
-                        page.set_cropbox(fitz.Rect(question['x'], question['y'], question['p_height'], question['p_width']))
-                        cropped_img = page.get_pixmap(matrix=fitz.Matrix(3, 3))
-                        question_img.put(
-                            Body=cropped_img.tobytes(output="jpg"))
-                        
-                        dynamoDB.update_item(
-                            TableName=os.environ["STUDENTANSWER_TABLE"],
-                            Key={
-                                "questionId": {
-                                    'S': question["qid"]
-                                },
-                                'studentId': {
-                                    'S': studentId
-                                }
-                            },
-                            UpdateExpression="SET #answer = :answer, #locate = :locate, #grade = :grade",
-                            ExpressionAttributeValues={
-                                ':answer':{
-                                    'S': str(std_ans[key]).strip()
-                                },
-                                ':locate':{
-                                    'M': {
-                                        "bucket": {
-                                            'S': textract_job["DocumentLocation"]["S3Bucket"]
-                                        },
-                                        "region": {
-                                            'S': os.environ["REGION"]
-                                        },
-                                        "uri": {
-                                            'S': uri
-                                        }
-                                    }
-                                },
-                                ":grade":{
-                                    'N': "0"
-                                }
-                            },
-                            ExpressionAttributeNames={
-                                "#answer": "answer",
-                                "#locate": "locate",
-                                "#grade": "grade"
-                            }
-                        )
-                if data_unmash["lastJobId"] == job_id:
+            
+            if data_unmash["lastJobId"] == job_id:
                     
-                    if data_unmash["type"] == 1:
-                        status_id = 9
-                        print("auto grade")
+                if data_unmash["type"] == 1:
+                    status_id = 9
+                    print("auto grade")
                         
-                    else:
-                        status_id = 8
+                else:
+                    status_id = 8
                     
-                    dynamoDB.update_item(
-                        TableName=os.environ["ANSWERSHEET_TABLE"],
-                        Key={
-                            "id": {
-                                "S": sheetId
-                            },
-                            "classroomId": {
-                                "S": classroomId
-                            }
+                
+                    
+                dynamoDB.update_item(
+                    TableName=os.environ["ANSWERSHEET_TABLE"],
+                    Key={
+                        "id": {
+                            "S": sheetId
                         },
-                        UpdateExpression="SET #status = :status",
-                        ExpressionAttributeValues={
-                                        ':status':{
-                                            'N': f"{status_id}"
-                                        }
-                                    },
-                                    ExpressionAttributeNames={
-                                        "#status": "status"
+                        "classroomId": {
+                            "S": classroomId
+                        }
+                    },
+                    UpdateExpression="SET #status = :status",
+                    ExpressionAttributeValues={
+                                    ':status':{
+                                        'N': f"{status_id}"
                                     }
-                    )
+                                },
+                                ExpressionAttributeNames={
+                                    "#status": "status"
+                                }
+                )
                     
                             
             # print(response)
