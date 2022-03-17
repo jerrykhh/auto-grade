@@ -8,6 +8,7 @@ import * as appsync from '@aws-cdk/aws-appsync-alpha';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as sns from 'aws-cdk-lib/aws-sns';
 import * as subscription from 'aws-cdk-lib/aws-sns-subscriptions';
+import * as origins from 'aws-cdk-lib/aws-cloudfront-origins';
 import * as amplify from 'aws-cdk-lib/aws-amplify';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import { DynamoDB } from 'aws-sdk';
@@ -411,15 +412,101 @@ export class InfraStack extends cdk.Stack {
       maxCapacity: 4
     });
 
+
+    // public storage
+
+    const appS3PublicStorage = new s3.Bucket(this, "AutoGradeStoragePublicBucket", {
+      bucketName: "auto-grade-app-pub-storage",
+      blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
+      removalPolicy: cdk.RemovalPolicy.DESTROY,
+      cors: [
+        {
+          allowedHeaders: ["*"],
+          allowedMethods: [
+            s3.HttpMethods.DELETE,
+            s3.HttpMethods.GET,
+            s3.HttpMethods.HEAD,
+            s3.HttpMethods.POST,
+            s3.HttpMethods.PUT
+          ],
+          allowedOrigins: [
+            "http://localhost:3000"
+          ],
+        }
+      ]
+    });
+
+    const cdn = new cloudfront.Distribution(this, "StorageCDN", {
+      defaultBehavior: {
+        origin: new origins.S3Origin(appS3PublicStorage),
+        allowedMethods: cloudfront.AllowedMethods.ALLOW_GET_HEAD,
+        viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
+        originRequestPolicy: cloudfront.OriginRequestPolicy.CORS_S3_ORIGIN
+      }
+    });
+    new cdk.CfnOutput(this, "StorageCDNDomainName", {
+      value: cdn.domainName
+    })
+    new cdk.CfnOutput(this, "StorageCDNDistributionDomainName", {
+      value: cdn.distributionDomainName
+    })
+  
+  
+  
+
+    const sendMailLambda = new lambda.Function(this, "SendMailLambda", {
+      runtime: lambda.Runtime.PYTHON_3_9,
+      handler: "main.handler",
+      code: lambda.Code.fromAsset('./src/lambda/sendMail', {
+        bundling: {
+          image: lambda.Runtime.PYTHON_3_9.bundlingImage,
+          command: [
+            'bash', '-c',
+            'pip install -r requirements.txt -t /asset-output && cp -au . /asset-output'
+          ]
+        }
+      }),
+      environment: {
+        ANSWERSHEET_TABLE: answerSheetDDB.tableName,
+        LOCATESTUDENTANSWERSHEET_TABLE: locateStudentAnswerSheetDDB.tableName,
+        STUDENTANSWER_TABLE: studentAnswerDDB.tableName,
+        PUBLIC_STORAGE: appS3PublicStorage.bucketName,
+        CLASSROOM_TABLE: classroomDDB.tableName,
+        CDN: cdn.distributionDomainName
+      },
+      timeout: cdk.Duration.seconds(30)
+    });
+
+    answerSheetDDB.grantReadWriteData(sendMailLambda)
+    locateStudentAnswerSheetDDB.grantReadData(sendMailLambda)
+    studentAnswerDDB.grantReadData(sendMailLambda)
+    classroomDDB.grantReadData(sendMailLambda)
+    appS3PublicStorage.grantReadWrite(sendMailLambda);
+    appS3storage.grantRead(sendMailLambda);
+
+    sendMailLambda.addToRolePolicy(new iam.PolicyStatement({
+        effect: iam.Effect.ALLOW,
+        resources: ["*"],
+        actions: ["ses:*"]
+      }))
+
+
+
     const studentAnswerSheetLambda = new lambda.Function(this, "StudentAnswerSheetLambda", {
       runtime: lambda.Runtime.NODEJS_14_X,
       handler: 'main.handler',
       code: lambda.Code.fromAsset('./src/lambda/studentAnswerSheet'),
       environment: {
         REGION: cdk.Stack.of(this).region,
-        STUDENTANSWERSHEET_TABLE: locateStudentAnswerSheetDDB.tableName
+        STUDENTANSWERSHEET_TABLE: locateStudentAnswerSheetDDB.tableName,
+        SENDMAIL: sendMailLambda.functionArn,
+        ANSWERSHEET_TABLE: answerSheetDDB.tableName
       }
     });
+
+    sendMailLambda.grantInvoke(studentAnswerSheetLambda)
+    answerSheetDDB.grantReadWriteData(studentAnswerSheetLambda);
+    // studentAnswerSheetLambda.grantInvoke(sendMailLambda)
 
     const studentAnswerSheetDS = graphqlAPI.addLambdaDataSource("lambdaStudentAnswerSheetDataSource", studentAnswerSheetLambda);
     locateStudentAnswerSheetDDB.grantReadData(studentAnswerSheetLambda);
@@ -427,6 +514,11 @@ export class InfraStack extends cdk.Stack {
     studentAnswerSheetDS.createResolver({
       typeName: "Query",
       fieldName: "listStudentAnswerSheet"
+    })
+
+    studentAnswerSheetDS.createResolver({
+      typeName: "Mutation",
+      fieldName: "publishStudentAnswerSheet"
     })
 
 
@@ -576,8 +668,7 @@ export class InfraStack extends cdk.Stack {
       fieldName: "saveStudentAnswer"
     })
 
-
-
+   
 
 
 

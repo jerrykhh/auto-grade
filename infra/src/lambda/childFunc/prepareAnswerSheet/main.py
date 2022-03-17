@@ -67,7 +67,7 @@ def handler(event, context):
 
     student_ans_sheet_file = s3.Object(event['file']["bucket"], f"public/{event['classroomId']}/{event['id']}/student_ans_sheet-{event['classroomId']}.pdf")
     student_ans_sheet_file.put(
-        Body=student_ans_sheet.write()
+        Body=student_ans_sheet.tobytes()
     )
 
     try:

@@ -204,4 +204,6 @@ type Mutation{
         @aws_cognito_user_pools
     saveStudentAnswer(input: [Grading]!): RequestResponse
         @aws_cognito_user_pools
+    publishStudentAnswerSheet(answerSheetId: ID!, classroomId: ID!, teacherId: ID!): RequestResponse
+        @aws_cognito_user_pools
 }

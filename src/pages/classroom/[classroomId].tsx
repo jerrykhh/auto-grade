@@ -18,12 +18,13 @@ import Accordion from "../../components/element/accordion";
 import Modal from "../../components/element/modal";
 import Link from "next/link";
 import Button from "../../components/element/button";
-import { CloudUploadIcon, EyeIcon, DocumentDownloadIcon } from "@heroicons/react/outline";
-import { TrashIcon } from "@heroicons/react/solid";
+import { CloudUploadIcon, EyeIcon, DocumentDownloadIcon, MailIcon } from "@heroicons/react/outline";
+import { TrashIcon, DocumentReportIcon } from "@heroicons/react/solid";
 import { downloadBlob } from "../../lib/download/downloadBlob"
 import { UploadStudentAnswerSheet } from "../../lib/studentAnswer/mutation";
 import awsconfig from "../../../aws-config";
 import Loader from "../../components/element/loader";
+import { publishStudentAnswerSheet, PublishStudentAnswerSheetMutation } from "../../lib/studentAnswerSheet/mutations";
 
 export const getServerSideProps: GetServerSideProps = async ({ req, query }) => {
     console.log("server");
@@ -95,10 +96,14 @@ const ClassroomDetailPage = ({ room }: { room: Classroom }) => {
     const [loadAnswerSheet, setLoadAnswerSheet] = useState<boolean>(true);
     const [portalErrMes, setPortalErrMes] = useState<String>("");
     const [portalSucMes, setPortalSucMes] = useState<String>("");
-    
+
+    const [publishModal, setPublishModal] = useState<boolean>(false);
+    const [publishAnswerSheetId, setpublishAnswerSheetId] = useState<String>("");
+
 
     const [uploadModal, setUploadModal] = useState<boolean>(false);
     const [file, setFile] = useState<File | null>(null);
+
     const [modalErrMes, setModalErrMes] = useState<string>("");
     const [uploadStudentAnswerSheetId, setUploadStudentAnswerSheetId] = useState<String>("")
 
@@ -184,16 +189,14 @@ const ClassroomDetailPage = ({ room }: { room: Classroom }) => {
 
 
     const downloadStudentAnswerSheet = async (answerSheetId: String, classroomName: String) => {
-        
+
         const result = await Storage.get(`${classroomId}/${answerSheetId}/student_ans_sheet-${classroomId}.pdf`, { download: true })
         const file_classroom = classroomName.replace(" ", "_");
         downloadBlob(result.Body, `student_ans_sheet-${file_classroom}.pdf`);
 
     }
 
-    const reloadAnswerSheet = async () => {
-        initPortalMes();
-        setAnswerSheets([]);
+    const fetechData = async() => {
         setLoadAnswerSheet(true)
         const { data } = await API.graphql({
             query: listReviewAnswerSheet,
@@ -206,6 +209,12 @@ const ClassroomDetailPage = ({ room }: { room: Classroom }) => {
         setLoadAnswerSheet(false);
     }
 
+    const reloadAnswerSheet = async () => {
+        initPortalMes();
+        setAnswerSheets([]);
+        fetechData();
+    }
+
     const initPortalMes = () => {
         setPortalErrMes("")
         setPortalSucMes("");
@@ -216,7 +225,7 @@ const ClassroomDetailPage = ({ room }: { room: Classroom }) => {
         try {
             const identityId = await (await Auth.currentUserCredentials()).identityId;
             console.log(identityId);
-            
+
             const uri = `${classroomId}/${uploadStudentAnswerSheetId}/stud_ans.pdf`;
 
             const res = await Storage.put(uri, file, {
@@ -238,7 +247,7 @@ const ClassroomDetailPage = ({ room }: { room: Classroom }) => {
             }) as GraphQLResult<UpdateStudentAnswerMutation>
 
             console.log(data)
-            if (data?.uploadStudentAnswer.result){
+            if (data?.uploadStudentAnswer.result) {
                 setPortalSucMes(`${uploadStudentAnswerSheetId}, ${data.uploadStudentAnswer.msg}`)
                 setUploadModal(false);
                 reloadAnswerSheet();
@@ -262,6 +271,27 @@ const ClassroomDetailPage = ({ room }: { room: Classroom }) => {
 
     }
 
+    const publish = async () => {
+        const answerSheetId = publishAnswerSheetId;
+        const identityId = await (await Auth.currentUserCredentials()).identityId;
+
+        const { data } = await API.graphql({
+            query: publishStudentAnswerSheet,
+            variables: {
+                answerSheetId: answerSheetId,
+                classroomId: classroomId,
+                teacherId: identityId
+            }
+        }) as GraphQLResult<PublishStudentAnswerSheetMutation>
+
+        if (data?.publishStudentAnswerSheet.result) {
+            setPortalSucMes(`${data.publishStudentAnswerSheet.msg}`)
+            setPublishModal(false);
+            fetechData();
+        } else
+            setPortalErrMes(`Error. ${data!.publishStudentAnswerSheet.msg}`)
+    }
+
 
 
     return (
@@ -276,7 +306,7 @@ const ClassroomDetailPage = ({ room }: { room: Classroom }) => {
             {portalSucMes != "" ?
                 <SuccessAlert
                     mes={portalSucMes} />
-                :<></>
+                : <></>
 
             }
             {uploadModal ?
@@ -311,7 +341,6 @@ const ClassroomDetailPage = ({ room }: { room: Classroom }) => {
 
                         }
                         <div className="mt-3 text-right">
-
                             <div className="md:flex block justify-end">
                                 <button onClick={studentAnswerSheet2S3} className="rounded p-2 mt-3 cursor-pointer w-full md:w-auto md:px-8 border border-black">
                                     Upload
@@ -326,6 +355,21 @@ const ClassroomDetailPage = ({ room }: { room: Classroom }) => {
 
                 </Modal>
                 : <></>
+            }
+            {publishModal ?
+                <Modal
+                    header="Warning message">
+                    if you confirm publish this answer sheet to student, please click Confirm. Answer sheet will not allow to modify if you click confirm after.
+                    <div className="md:flex justify-end">
+                    <button onClick={publish} className="rounded p-2 mt-3 cursor-pointer w-full md:w-auto md:px-8 border border-black">
+                        Confirm
+                    </button>
+                    <div className="md:ml-3 sm: mt-3">
+                        <Button onClick={() => setPublishModal(false)}>Close</Button>
+                    </div>
+                    </div>
+                </Modal>
+                :<></>
             }
             {classroom.students == null || classroom.students.length == 0 ?
                 <React.Fragment>
@@ -351,13 +395,13 @@ const ClassroomDetailPage = ({ room }: { room: Classroom }) => {
                 <React.Fragment>
                     <div className="md:flex">
                         <Button onClick={() => router.push({
-                            pathname: '/classroom/[classroomId]/sheet',
+                            pathname: '/classroom/[classroomId]/upload/',
                             query: { classroomId: classroomId }
                         })}>Create Answer Sheet</Button>
                         <button className=" bg-gray-50 border border-gray-700 rounded p-2 w-full my-3 md:w-auto md:ml-5 md:my-0" onClick={() => reloadAnswerSheet()}>Reload</button>
                     </div>
-                    
-                    
+
+
                     <div className="row">
                         <Table
                             title="Answer Sheet">
@@ -370,9 +414,9 @@ const ClassroomDetailPage = ({ room }: { room: Classroom }) => {
                                 {answerSheets.length == 0 ?
                                     <Table.Row>
                                         <Table.Cell colSpan={3} className="text-center px-6 py-4 ">
-                                            {loadAnswerSheet?
+                                            {loadAnswerSheet ?
                                                 <div className="p-3">
-                                                     <Loader show={loadAnswerSheet} />
+                                                    <Loader show={loadAnswerSheet} />
                                                 </div>
                                                 :
                                                 <span>No any data here</span>
@@ -386,12 +430,14 @@ const ClassroomDetailPage = ({ room }: { room: Classroom }) => {
                                                 {Number(sheet.status) < 1 ?
                                                     <Table.Cell>Failed</Table.Cell>
                                                     :
-                                                    Number(sheet.status) == 5 ||  Number(sheet.status) == 8?
+                                                    Number(sheet.status) == 5 || Number(sheet.status) == 10 ?
                                                         <Table.Cell>Completed</Table.Cell>
                                                         :
                                                         Number(sheet.status) == 7 ?
                                                             <Table.Cell>Detecting...</Table.Cell>
-                                                            : <Table.Cell>Preparing...</Table.Cell>
+                                                            : Number(sheet.status) == 11?
+                                                                <Table.Cell>Publishing...</Table.Cell>
+                                                                :<></>
                                                 }
                                                 <Table.Cell>
                                                     {Number(sheet.status) < 1 ?
@@ -403,7 +449,8 @@ const ClassroomDetailPage = ({ room }: { room: Classroom }) => {
                                                         : Number(sheet.status) >= 5 ?
                                                             <React.Fragment>
 
-                                                                {Number(sheet.status) != 7 ?
+                                                                {Number(sheet.status) == 7 || Number(sheet.status) == 11 ?
+                                                                    <></> :
                                                                     <Link href={Number(sheet.status) == 5 ? `./${classroomId}/${sheet.id}/config` : `./${classroomId}/${sheet.id}/`}>
                                                                         <a target="_blank">
                                                                             <button className="p-2  bg-violet-400 text-white rounded m-2">
@@ -414,8 +461,25 @@ const ClassroomDetailPage = ({ room }: { room: Classroom }) => {
                                                                             </button>
                                                                         </a>
                                                                     </Link>
-                                                                    : <></>
+
                                                                 }
+                                                                {Number(sheet.status) == 10 ?
+                                                                    <React.Fragment>
+                                                                        <button className="p-2 bg-indigo-700 text-white rounded m-2" onClick={() => router.push(`./${classroomId}/${sheet.id}/report`)}>
+                                                                            <DocumentReportIcon className="w-5" />
+                                                                        </button>
+                                                                        <button className="p-2 bg-orange-700 text-white rounded m-2" onClick={() => {
+                                                                            setpublishAnswerSheetId(sheet.id);
+                                                                            setPublishModal(true);
+                                                                        }}>
+                                                                            <MailIcon className="w-5" />
+                                                                        </button>
+                                                                    </React.Fragment>
+                                                                    : <></>
+
+                                                                }
+
+
                                                                 {Number(sheet.status) == 5 ?
                                                                     <React.Fragment>
                                                                         <button className="p-2 bg-sky-400 text-white rounded m-2" onClick={() => {
@@ -430,7 +494,6 @@ const ClassroomDetailPage = ({ room }: { room: Classroom }) => {
                                                                         </button>
                                                                     </React.Fragment>
                                                                     : <></>
-
                                                                 }
 
 
@@ -438,7 +501,7 @@ const ClassroomDetailPage = ({ room }: { room: Classroom }) => {
                                                             : <></>
 
                                                     }
-                                                    {Number(sheet.status) != 1 ?
+                                                    {Number(sheet.status) != 1 && Number(sheet.status) <= 10 ?
                                                         <button className="p-2 bg-red-600 text-white rounded m-2">
                                                             <TrashIcon className="w-5 " />
                                                         </button>

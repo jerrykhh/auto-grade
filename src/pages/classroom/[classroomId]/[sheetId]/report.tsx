@@ -413,9 +413,6 @@ const ReportPage = ({ totalStudent, absStudents, answerSheet }: { totalStudent: 
 
                                 </React.Fragment>
                             )
-
-
-
                         })
 
                         }

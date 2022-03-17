@@ -262,7 +262,7 @@ def handler(event, context):
                     print("auto grade")
                         
                 else:
-                    status_id = 8
+                    status_id = 10
                     
                 
                     
