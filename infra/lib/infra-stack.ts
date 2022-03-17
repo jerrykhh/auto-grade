@@ -540,6 +540,21 @@ export class InfraStack extends cdk.Stack {
     })
     appS3storage.grantRead(qrcodeDecoder);
 
+    const gradeFunc = new lambda.DockerImageFunction(this, "GradeFunc", {
+      code:lambda.DockerImageCode.fromImageAsset("./src/lambda/childFunc/gradeFunc", {
+        cmd:["main.handler"]
+      }),
+      memorySize: 2048,
+      timeout: cdk.Duration.minutes(15),
+      environment: {
+        ANSWERSHEET_TABLE: answerSheetDDB.tableName,
+        STUDENTANSWER_TABLE: studentAnswerDDB.tableName,
+      }
+    });
+
+    answerSheetDDB.grantReadWriteData(gradeFunc);
+    studentAnswerDDB.grantReadWriteData(gradeFunc);
+
     const uploadStudentAnswerLambda = new lambda.Function(this, "SubscriptTextract", {
       handler: "main.handler",
       runtime: lambda.Runtime.PYTHON_3_9,
@@ -557,12 +572,15 @@ export class InfraStack extends cdk.Stack {
         ANSWERSHEET_TABLE: answerSheetDDB.tableName,
         STUDENTANSWER_TABLE: studentAnswerDDB.tableName,
         QRCODE_DECODEER: qrcodeDecoder.functionArn,
-        LOCATESTUDENTANSWERSHEET_TABLE: locateStudentAnswerSheetDDB.tableName
+        LOCATESTUDENTANSWERSHEET_TABLE: locateStudentAnswerSheetDDB.tableName,
+        GRADE_FUNC: gradeFunc.functionArn
       },
       timeout: cdk.Duration.seconds(60),
       memorySize: 256,
     });
 
+
+    gradeFunc.grantInvoke(uploadStudentAnswerLambda);
     answerSheetDDB.grantReadWriteData(uploadStudentAnswerLambda);
     locateStudentAnswerSheetDDB.grantWriteData(uploadStudentAnswerLambda);
     qrcodeDecoder.grantInvoke(uploadStudentAnswerLambda)

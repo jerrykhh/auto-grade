@@ -9,6 +9,7 @@ from boto3.dynamodb.types import TypeDeserializer
 
 
 
+
 class TextractKVParser:
     
     def __init__(self, res) -> None:
@@ -259,7 +260,15 @@ def handler(event, context):
                     
                 if data_unmash["type"] == 1:
                     status_id = 9
-                    print("auto grade")
+                    
+                    lamFunc.invoke(
+                        FunctionName=os.environ['GRADE_FUNC'],
+                        InvocationType='Event',
+                        Payload= json.dumps({
+                            "answerSheetId": sheetId,
+                            "classroomId": classroomId
+                        })
+                    )
                         
                 else:
                     status_id = 10
