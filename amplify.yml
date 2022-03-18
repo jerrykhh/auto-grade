@@ -3,7 +3,7 @@ frontend:
   phases:
     preBuild:
       commands:
-        - npm ci
+        - npm install
     build:
       commands:
         - echo "NEXT_PUBLIC_IDENTITYPOOLID=$IDENTITYPOOLID" >> .env.local
