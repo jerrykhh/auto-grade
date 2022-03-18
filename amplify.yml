@@ -3,6 +3,7 @@ frontend:
   phases:
     preBuild:
       commands:
+        - rm -rf ./infra/
         - npm install
     build:
       commands:
