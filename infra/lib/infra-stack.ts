@@ -12,6 +12,7 @@ import * as origins from 'aws-cdk-lib/aws-cloudfront-origins';
 import * as amplify from '@aws-cdk/aws-amplify-alpha';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import { DynamoDB } from 'aws-sdk';
+import { SecretValue } from 'aws-cdk-lib';
 // import * as sqs from 'aws-cdk-lib/aws-sqs';
 
 export class InfraStack extends cdk.Stack {
@@ -699,18 +700,17 @@ export class InfraStack extends cdk.Stack {
       sourceCodeProvider: new amplify.GitHubSourceCodeProvider({
         owner: 'jerrykhh',
         repository: 'auto-grade',
-        oauthToken: cdk.SecretValue.secretsManager('github-token')
+        oauthToken: SecretValue.secretsManager('github-token')
       }),
       environmentVariables: {
         IDENTITYPOOLID: identityPool.ref,
         USERPOOLID: userPool.userPoolId,
         USERPOOLWEBCLIENTID: userPoolClient.userPoolClientId,
-        AWS3_BUCKET: appS3storage.bucketName,
-        AWS3_REGION: cdk.Stack.of(this).region,
-        AWS_APPSYNC_GRAPHQLENDPOINT: graphqlAPI.graphqlUrl,
-        AWS_APPSYNC_REGION: cdk.Stack.of(this).region,
-        AWS_APPSYNC_AUTHENTICATIONTYPE: "AMAZON_COGNITO_USER_POOLS",
-        AWS_APPSYNC_APIKEY: "null",
+        BUCKET: appS3storage.bucketName,
+        APPSYNC_GRAPHQLENDPOINT: graphqlAPI.graphqlUrl,
+        APPSYNC_REGION: cdk.Stack.of(this).region,
+        APPSYNC_AUTHENTICATIONTYPE: "AMAZON_COGNITO_USER_POOLS",
+        APPSYNC_APIKEY: "null",
         REGION: cdk.Stack.of(this).region
         
       }
