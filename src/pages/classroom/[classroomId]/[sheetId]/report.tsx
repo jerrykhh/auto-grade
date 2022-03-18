@@ -2,7 +2,6 @@ import { GraphQLResult } from "@aws-amplify/api";
 import { withSSRContext, API, Auth } from "aws-amplify";
 import { GetServerSideProps } from "next"
 import React, { useEffect, useState } from "react";
-import { StudentAnswerSheet } from "../../../../../infra/src/lambda/studentAnswerSheet/interface";
 import SystemPage from "../../../../components/customize/template/SystemPage"
 import Accordion from "../../../../components/element/accordion";
 import { ErrorAlert } from "../../../../components/element/alert";
@@ -31,6 +30,7 @@ import { Bar, Pie } from 'react-chartjs-2';
 import Button from "../../../../components/element/button";
 import { useRouter } from "next/router";
 import Loader from "../../../../components/element/loader";
+import { StudentAnswerSheet } from "../../../../interface/studentAnswerSheet";
 
 ChartJS.register(
     ArcElement,
