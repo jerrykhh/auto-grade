@@ -37,5 +37,4 @@ yarn-error.log*
 
 # typescript
 *.tsbuildinfo
-aws-config.js
 **.DS_Store
