@@ -1,0 +1,26 @@
+version: 1
+frontend:
+  phases:
+    preBuild:
+      commands:
+        - npm ci
+    build:
+      commands:
+        - echo "NEXT_PUBLIC_IDENTITYPOOLID=$IDENTITYPOOLID" >> .env.local
+        - echo "NEXT_PUBLIC_USERPOOLID=$USERPOOLID" >> .env.local
+        - echo "NEXT_PUBLIC_USERPOOLWEBCLIENTID=$USERPOOLWEBCLIENTID" >> .env.local
+        - echo "NEXT_PUBLIC_AWS3_BUCKET=$AWS3_BUCKET" >> .env.local
+        - echo "NEXT_PUBLIC_AWS3_REGION=$AWS3_REGION" >> .env.local
+        - echo "NEXT_PUBLIC_AWS_APPSYNC_GRAPHQLENDPOINT=$AWS_APPSYNC_GRAPHQLENDPOINT" >> .env.local
+        - echo "NEXT_PUBLIC_AWS_APPSYNC_REGION=$AWS_APPSYNC_REGION" >> .env.local
+        - echo "NEXT_PUBLIC_AWS_APPSYNC_AUTHENTICATIONTYPE=$AWS_APPSYNC_AUTHENTICATIONTYPE" >> .env.local
+        - echo "NEXT_PUBLIC_AWS_APPSYNC_APIKEY=$AWS_APPSYNC_APIKEY" >> .env.local
+        - echo "NEXT_PUBLIC_REGION="$REGION >> .env.local
+        - npm run build
+  artifacts:
+    baseDirectory: build
+    files:
+      - "**/*"
+  cache:
+    paths:
+      - node_modules/**/*

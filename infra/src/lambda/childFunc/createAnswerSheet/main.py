@@ -129,7 +129,8 @@ def handler(event, context):
                     },
                     ExpressionAttributeNames={
                         "#status": "status",
-                        "#locate": "locate"
+                        "#locate": "locate",
+                        "#page": "page"
                     }
                 )
                 

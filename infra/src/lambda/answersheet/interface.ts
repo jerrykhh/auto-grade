@@ -1,6 +1,6 @@
 import { DynamoDB } from "aws-sdk";
 
-type PDFAnnotation = {
+export type PDFAnnotation = {
     qid: string,
     tcode: string,
     x: number,
@@ -12,7 +12,7 @@ type PDFAnnotation = {
     mark: number
 }
 
-type AnswerSheet = {
+export type AnswerSheet = {
     id: string,
     classroomId: string,
     name: string,
@@ -20,15 +20,15 @@ type AnswerSheet = {
     locate: Array<PDFAnnotation> | Array<DynamoDB.AttributeMap>
 }
 
-type AnswerSheetConntection= {
+export type AnswerSheetConntection = {
     items: Array<DynamoDB.AttributeMap>
     nextToken: string | null
 }
 
-type UploadFile = {
+export type UploadFile = {
     bucket: string
     region: string
     uri: string
 }
 
-export {AnswerSheet, PDFAnnotation, AnswerSheetConntection, UploadFile};
+// export { AnswerSheet, PDFAnnotation, AnswerSheetConntection, UploadFile };

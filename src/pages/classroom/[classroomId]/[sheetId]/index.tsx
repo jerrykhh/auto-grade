@@ -214,8 +214,6 @@ const GradePage = ({ answerSheet }: { answerSheet: AnswerSheet }) => {
     }
 
     useEffect(() => {
-        console.log("useEffect");
-
         bodyOffsetY();
         fetechQuestion();
     }, []);

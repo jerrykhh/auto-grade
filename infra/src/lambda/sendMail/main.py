@@ -79,7 +79,7 @@ def handler(event, context):
     for student in locates:
        
         student_ans_sheet:fitz.Document = fitz.open(
-                stream=s3.Object(student["locate"]["bucket"], "private/"+student["locate"]["uri"]).get()['Body'].read(),
+                stream=s3.Object(student["locate"]["bucket"], student["locate"]["uri"]).get()['Body'].read(),
                 filetype="pdf"
             )
         total_grade = 0
@@ -121,6 +121,7 @@ def handler(event, context):
             
         rect = fitz.Rect(20, 20, 100, 100)
         page = student_ans_sheet.load_page(0)
+        total_grade = round(total_grade, 1)
         page.insert_textbox(rect, f"Total: {total_grade}", color=(1,0,0), align=2, fontsize=14)
         
         # print("save")

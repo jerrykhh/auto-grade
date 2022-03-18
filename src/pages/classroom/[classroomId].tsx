@@ -25,6 +25,7 @@ import { UploadStudentAnswerSheet } from "../../lib/studentAnswer/mutation";
 import awsconfig from "../../../aws-config";
 import Loader from "../../components/element/loader";
 import { publishStudentAnswerSheet, PublishStudentAnswerSheetMutation } from "../../lib/studentAnswerSheet/mutations";
+import { removeAnswerSheet, RemoveAnswerSheetMutation } from "../../lib/answersheet/mutation";
 
 export const getServerSideProps: GetServerSideProps = async ({ req, query }) => {
     console.log("server");
@@ -106,6 +107,9 @@ const ClassroomDetailPage = ({ room }: { room: Classroom }) => {
 
     const [modalErrMes, setModalErrMes] = useState<string>("");
     const [uploadStudentAnswerSheetId, setUploadStudentAnswerSheetId] = useState<String>("")
+
+    const [removeModal, setRemoveModal] = useState<boolean>(false);
+    const [removeSheetId, setRemoveSheetId] = useState<String>("");
 
     useEffect(() => {
         reloadAnswerSheet();
@@ -196,7 +200,7 @@ const ClassroomDetailPage = ({ room }: { room: Classroom }) => {
 
     }
 
-    const fetechData = async() => {
+    const fetechData = async () => {
         setLoadAnswerSheet(true)
         const { data } = await API.graphql({
             query: listReviewAnswerSheet,
@@ -251,6 +255,7 @@ const ClassroomDetailPage = ({ room }: { room: Classroom }) => {
                 setPortalSucMes(`${uploadStudentAnswerSheetId}, ${data.uploadStudentAnswer.msg}`)
                 setUploadModal(false);
                 reloadAnswerSheet();
+                setFile(null);
             }
 
 
@@ -290,6 +295,29 @@ const ClassroomDetailPage = ({ room }: { room: Classroom }) => {
             fetechData();
         } else
             setPortalErrMes(`Error. ${data!.publishStudentAnswerSheet.msg}`)
+    }
+
+    const toRemoveSheet = async () => {
+
+        const { data } = await API.graphql({
+            query: removeAnswerSheet,
+            variables: {
+                id: removeSheetId,
+                classroomId: classroomId
+            }
+        }) as GraphQLResult<RemoveAnswerSheetMutation>
+
+        console.log(data);
+
+
+        if (data?.removeAnswerSheet.result) {
+            setPortalSucMes(`${removeSheetId} is removed`);
+            fetechData();
+            setRemoveModal(false);
+        } else {
+            setPortalErrMes("Remove failed")
+        }
+
     }
 
 
@@ -361,16 +389,32 @@ const ClassroomDetailPage = ({ room }: { room: Classroom }) => {
                     header="Warning message">
                     if you confirm publish this answer sheet to student, please click Confirm. Answer sheet will not allow to modify if you click confirm after.
                     <div className="md:flex justify-end">
-                    <button onClick={publish} className="rounded p-2 mt-3 cursor-pointer w-full md:w-auto md:px-8 border border-black">
-                        Confirm
-                    </button>
-                    <div className="md:ml-3 sm: mt-3">
-                        <Button onClick={() => setPublishModal(false)}>Close</Button>
-                    </div>
+                        <button onClick={publish} className="rounded p-2 mt-3 cursor-pointer w-full md:w-auto md:px-8 border border-black">
+                            Confirm
+                        </button>
+                        <div className="md:ml-3 sm: mt-3">
+                            <Button onClick={() => setPublishModal(false)}>Close</Button>
+                        </div>
                     </div>
                 </Modal>
-                :<></>
+                : <></>
             }
+            {removeModal ?
+                <Modal
+                    header="Remove Warning">
+                    Do you confirm to remove this classroom?
+                    <div className="md:flex justify-end mt-5">
+                        <button onClick={toRemoveSheet} className="rounded p-2 mt-3 cursor-pointer w-full md:w-auto md:px-8 border border-black">
+                            Confirm
+                        </button>
+                        <div className="md:ml-3 sm: mt-3">
+                            <Button onClick={() => setRemoveModal(false)}>Close</Button>
+                        </div>
+                    </div>
+                </Modal>
+                : <></>
+            }
+
             {classroom.students == null || classroom.students.length == 0 ?
                 <React.Fragment>
                     <WarningAlert
@@ -430,79 +474,81 @@ const ClassroomDetailPage = ({ room }: { room: Classroom }) => {
                                                 {Number(sheet.status) < 1 ?
                                                     <Table.Cell>Failed</Table.Cell>
                                                     :
-                                                    Number(sheet.status) == 5 || Number(sheet.status) == 10 ?
+                                                    Number(sheet.status) == 5 || Number(sheet.status) == 10 || Number(sheet.status) == 12 ?
                                                         <Table.Cell>Completed</Table.Cell>
                                                         :
-                                                        Number(sheet.status) == 7 ?
+                                                        Number(sheet.status) == 7 ||  Number(sheet.status) == 9 ?
                                                             <Table.Cell>Detecting...</Table.Cell>
-                                                            : Number(sheet.status) == 11?
+                                                            : Number(sheet.status) == 11 ?
                                                                 <Table.Cell>Publishing...</Table.Cell>
-                                                                :<></>
+                                                                : <Table.Cell>Prepareing...</Table.Cell>
                                                 }
                                                 <Table.Cell>
-                                                    {Number(sheet.status) < 1 ?
+                                                    {Number(sheet.status) >= 5 ?
+                                                        <React.Fragment>
 
-                                                        <button className="p-3 bg-orange-400 text-white rounded">
-                                                            <CloudUploadIcon className="w-5" /> Upload Answer Sheet
-                                                        </button>
-
-                                                        : Number(sheet.status) >= 5 ?
-                                                            <React.Fragment>
-
-                                                                {Number(sheet.status) == 7 || Number(sheet.status) == 11 ?
-                                                                    <></> :
-                                                                    <Link href={Number(sheet.status) == 5 ? `./${classroomId}/${sheet.id}/config` : `./${classroomId}/${sheet.id}/`}>
-                                                                        <a target="_blank">
-                                                                            <button className="p-2  bg-violet-400 text-white rounded m-2">
-                                                                                <div className="flex">
-                                                                                    <EyeIcon className="w-5" />
-                                                                                    <span>View</span>
-                                                                                </div>
-                                                                            </button>
-                                                                        </a>
-                                                                    </Link>
-
-                                                                }
-                                                                {Number(sheet.status) == 10 ?
-                                                                    <React.Fragment>
-                                                                        <button className="p-2 bg-indigo-700 text-white rounded m-2" onClick={() => router.push(`./${classroomId}/${sheet.id}/report`)}>
-                                                                            <DocumentReportIcon className="w-5" />
+                                                            {Number(sheet.status) == 7 || Number(sheet.status) == 11 ?
+                                                                <></> :
+                                                                <Link href={Number(sheet.status) == 5 ? `./${classroomId}/${sheet.id}/config` : `./${classroomId}/${sheet.id}/`}>
+                                                                    <a target="_blank">
+                                                                        <button className="p-2  bg-violet-400 text-white rounded m-2">
+                                                                            <div className="flex">
+                                                                                <EyeIcon className="w-5" />
+                                                                                <span>View</span>
+                                                                            </div>
                                                                         </button>
-                                                                        <button className="p-2 bg-orange-700 text-white rounded m-2" onClick={() => {
-                                                                            setpublishAnswerSheetId(sheet.id);
-                                                                            setPublishModal(true);
-                                                                        }}>
-                                                                            <MailIcon className="w-5" />
-                                                                        </button>
-                                                                    </React.Fragment>
-                                                                    : <></>
+                                                                    </a>
+                                                                </Link>
 
-                                                                }
+                                                            }
+                                                            {Number(sheet.status) >= 10 ?
+                                                                <button className="p-2 bg-indigo-700 text-white rounded m-2" onClick={() => router.push(`./${classroomId}/${sheet.id}/report`)}>
+                                                                    <DocumentReportIcon className="w-5" />
+                                                                </button>
+                                                                : <></>
 
-
-                                                                {Number(sheet.status) == 5 ?
-                                                                    <React.Fragment>
-                                                                        <button className="p-2 bg-sky-400 text-white rounded m-2" onClick={() => {
-                                                                            setUploadStudentAnswerSheetId(sheet.id);
-                                                                            setUploadModal(true)
-                                                                        }}>
-                                                                            <CloudUploadIcon className="w-5" />
-                                                                        </button>
-
-                                                                        <button className="p-2 bg-black text-white rounded m-2" onClick={() => downloadStudentAnswerSheet(sheet.id, sheet.name)}>
-                                                                            <DocumentDownloadIcon className="w-5" />
-                                                                        </button>
-                                                                    </React.Fragment>
-                                                                    : <></>
-                                                                }
+                                                            }
+                                                            {Number(sheet.status) == 10 ?
 
 
-                                                            </React.Fragment>
-                                                            : <></>
+                                                                <button className="p-2 bg-orange-700 text-white rounded m-2" onClick={() => {
+                                                                    setpublishAnswerSheetId(sheet.id);
+                                                                    setPublishModal(true);
+                                                                }}>
+                                                                    <MailIcon className="w-5" />
+                                                                </button>
+
+                                                                : <></>
+
+                                                            }
+
+
+                                                            {Number(sheet.status) == 5 ?
+                                                                <React.Fragment>
+                                                                    <button className="p-2 bg-sky-400 text-white rounded m-2" onClick={() => {
+                                                                        setUploadStudentAnswerSheetId(sheet.id);
+                                                                        setUploadModal(true)
+                                                                    }}>
+                                                                        <CloudUploadIcon className="w-5" />
+                                                                    </button>
+
+                                                                    <button className="p-2 bg-black text-white rounded m-2" onClick={() => downloadStudentAnswerSheet(sheet.id, sheet.name)}>
+                                                                        <DocumentDownloadIcon className="w-5" />
+                                                                    </button>
+                                                                </React.Fragment>
+                                                                : <></>
+                                                            }
+
+
+                                                        </React.Fragment>
+                                                        : <></>
 
                                                     }
                                                     {Number(sheet.status) != 1 && Number(sheet.status) <= 10 ?
-                                                        <button className="p-2 bg-red-600 text-white rounded m-2">
+                                                        <button className="p-2 bg-red-600 text-white rounded m-2" onClick={() => {
+                                                            setRemoveModal(true);
+                                                            setRemoveSheetId(sheet.id);
+                                                        }}>
                                                             <TrashIcon className="w-5 " />
                                                         </button>
                                                         : <></>

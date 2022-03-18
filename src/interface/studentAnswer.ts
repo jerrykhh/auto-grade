@@ -24,3 +24,8 @@ export type ReviewStudentAnswer = {
     answer: string
     grade: number
 }
+
+export type StudentStat = {
+    studentId: string,
+    grade: number
+}

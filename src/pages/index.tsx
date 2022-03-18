@@ -31,13 +31,34 @@ export const getServerSideProps: GetServerSideProps = async ({req}) => {
 const Index: NextPage = () => {
 
     const [errMessage, setErrMessage] = useState("");
+    const [user, setUser] = useState();
+    const [needChangePassword, setNeedChangePassword] = useState<boolean>(false);
+
     const router = useRouter();
 
+    const onChangePassword = async (newPwd: string, confirmNewPwd: string) => {
+        if(newPwd != confirmNewPwd){
+            setErrMessage("Password not match")
+            return;
+        }
+
+        await Auth.completeNewPassword(user, newPwd).then(() => {
+            router.push("/classroom")
+        })
+    }
+
     const onLogin = async (username: string, password: string) => {
-        
+        setErrMessage("");
         Auth.signIn(username, password)
-            .then(() => {
-                router.push("/classroom")
+            .then(user => {
+
+                if (user.challengeName === 'NEW_PASSWORD_REQUIRED') {
+                    setNeedChangePassword(true);
+                    setUser(user)
+                }else{
+                    router.push("/classroom")
+                }
+                
             })
             .catch(() => {
                 setErrMessage("Login Failed, username or password incorrect.")
@@ -47,6 +68,8 @@ const Index: NextPage = () => {
     return (
             <LoginPage
                 themeImagePath="/login-bg.jpg"
+                needChangePassword={needChangePassword}
+                onChangePassword={onChangePassword}
                 onLogin={onLogin}
                 errMessage={errMessage}
                 />

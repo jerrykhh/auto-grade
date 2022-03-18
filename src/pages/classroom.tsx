@@ -9,41 +9,32 @@ import Table from "../components/element/table";
 import TextArea from "../components/input/textarea";
 import Textfield from "../components/input/textfield";
 import { Classroom } from "../interface/classroom";
-import { listReviewClassroom } from "../lib/classroom/queries";
-import { createClassroom, CreateClassroomMutation } from "../lib/classroom/mutations";
+import { listReviewClassroom, ListReviewClassroomQuery } from "../lib/classroom/queries";
+import { createClassroom, CreateClassroomMutation, removeClassroom, RemoveClassroomMutation } from "../lib/classroom/mutations";
 import { useRouter } from "next/router";
 import { ErrorAlert, SuccessAlert } from "../components/element/alert";
-import { EyeIcon } from "@heroicons/react/solid";
+import { EyeIcon, TrashIcon } from "@heroicons/react/solid";
+import Loader from "../components/element/loader";
 
 export const getServerSideProps: GetServerSideProps = async ({ req }) => {
     const { Auth, API } = withSSRContext({ req });
     try {
         const identityId = await (await Auth.currentUserCredentials()).identityId;
         console.log(identityId);
-
-        const { data } = await API.graphql({
-            query: listReviewClassroom,
-            variables: {
-                teacherId: identityId
-            }
-        })
         
+        if(!identityId)
+            throw Error();
 
-        return {
-            props: {
-                rooms: data.listClassrooms.items
-            }
-        }
     } catch (err) {
         console.log(err);
 
-        // return {
-        //     redirect: {
-        //         permanent: false,
-        //         destination: "/",
-        //     },
-        //     props: {},
-        // }
+        return {
+            redirect: {
+                permanent: false,
+                destination: "/",
+            },
+            props: {},
+        }
     }
 
     return {
@@ -52,19 +43,42 @@ export const getServerSideProps: GetServerSideProps = async ({ req }) => {
 }
 
 
-const Classroom = ({ rooms }: { rooms: Array<Classroom> }) => {
-    console.log("Classroom Page")
-    console.log(rooms);
-    
+const Classroom = () => {
+
     const router = useRouter();
     const [createClassroomModal, setCreateClassrooModal] = useState<Boolean>(false);
     const [classroomName, setClassroomName] = useState<string>('');
     const [classroomDesc, setClassroomDesc] = useState<string>('');
-    const [classroom, setClassroom] = useState<Array<Classroom>>(rooms);
+    const [classroom, setClassroom] = useState<Array<Classroom>>([]);
+
+    const [loading, setLoading] = useState<boolean>(true);
 
     // Message
     const [portalMes, setPortalMes] = useState<String>("");
+    const [portalErrMes, setPortalErrMes] = useState<String>("");
     const [modalMes, setModalMes] = useState<String>("");
+
+    const [removeModal, setRemoveModal] = useState<boolean>(false);
+    const [removeClassroomId, setRemoveClassroomId] = useState<string| String>("");
+
+    const fetechClassroom = async () => {
+        setLoading(true)
+        const identityId = await (await Auth.currentUserCredentials()).identityId;
+
+        const { data } = await API.graphql({
+            query: listReviewClassroom,
+            variables: {
+                teacherId: identityId
+            }
+        }) as GraphQLResult<ListReviewClassroomQuery>
+
+        if (data!.listClassrooms.items){
+            setClassroom(data!.listClassrooms.items)
+        }
+
+        setLoading(false);
+
+    }
 
     const onCreateClassroom = async () => {
 
@@ -89,12 +103,13 @@ const Classroom = ({ rooms }: { rooms: Array<Classroom> }) => {
                     },
                     authMode: GRAPHQL_AUTH_MODE.AMAZON_COGNITO_USER_POOLS
                 }) as GraphQLResult<CreateClassroomMutation>
-                
-                
-                if (newClassroom.data?.createClassroom){
+
+
+                if (newClassroom.data?.createClassroom) {
                     const room = newClassroom.data?.createClassroom;
-                    setClassroom([...classroom, room]);
+                    // setClassroom([...classroom, room]);
                     setCreateClassrooModal(false);
+                    fetechClassroom();
                     setPortalMes(`Classroom ${room.name}(${room.id}) created.`)
                 }
 
@@ -106,45 +121,83 @@ const Classroom = ({ rooms }: { rooms: Array<Classroom> }) => {
 
     }
 
-    const goClassroom = (id:String) => {
-        router.push(`classroom/${id}`)
+    const goClassroom = (id: String) => {
+        console.log(id);
+        
+        router.push(`./classroom/${id}`)
     }
 
-    // useEffect(() => {
+    const toRemoveClassroom = async () => {
+        
+        setPortalErrMes("");
+        setPortalMes("")
 
-    //     setClassroom([
-    //         {
-    //             id: "1",
-    //             teacherId: "t1",
-    //             name: "name",
-    //             description: "desc"
-    //         },
-    //         {
-    //             id: "1",
-    //             teacherId: "t1",
-    //             name: "name",
-    //             description: "desc"
-    //         }
-    //     ])
-    // }, [])
+        const identityId = await (await Auth.currentUserCredentials()).identityId;
+
+        const { data } = await API.graphql({
+            query: removeClassroom,
+            variables: {
+                id: removeClassroomId,
+                teacherId: identityId
+            }
+        }) as GraphQLResult<RemoveClassroomMutation>
+        console.log(data);
+        
+        if (data?.removeClassroom.result) {
+            setPortalMes(`${removeClassroomId} is removed`);
+            fetechClassroom();
+            setLoading(true);
+            setRemoveModal(false);
+            setClassroomName("");
+            setClassroomDesc('')
+            
+        } else {
+            setPortalErrMes(`${removeClassroomId} remove failed, try again later`)
+        }
+    }
+
+    useEffect(() => {
+        fetechClassroom()
+    }, [])
 
     return (
         <SystemPage
             pageTitle="Classroom"
             headerTitle="Classroom Page">
-            {portalMes != ""?
+            {portalMes != "" ?
                 <SuccessAlert
-                        mes={portalMes} />
-                    :<></>
+                    mes={portalMes} />
+                : <></>
+            }
+            {portalErrMes != "" ?
+                <ErrorAlert mes={portalErrMes} />
+                : <></>
+            }
+            {removeModal?
+                <Modal
+                    header="Remove Warning">
+                    Do you confirm to remove this classroom?
+                    <div className="md:flex justify-end mt-5">
+                        <button onClick={toRemoveClassroom} className="rounded p-2 mt-3 cursor-pointer w-full md:w-auto md:px-8 border border-black">
+                            Confirm
+                        </button>
+                        <div className="md:ml-3 sm: mt-3">
+                            <Button onClick={() => setRemoveModal(false)}>Close</Button>
+                        </div>
+                    </div>
+                </Modal>
+                :<></>
+
             }
             {createClassroomModal ?
                 <Modal
                     header="Test">
                     <React.Fragment>
-                        {modalMes != ""?
+                        {modalMes != "" ?
                             <ErrorAlert mes={modalMes} />
-                                : <></>
+                            : <></>
                         }
+
                         <div className="row">
                             <Textfield type="text"
                                 value={classroomName}
@@ -166,7 +219,7 @@ const Classroom = ({ rooms }: { rooms: Array<Classroom> }) => {
                                         onClick={() => setCreateClassrooModal(false)}>Close</button>
                                 </div>
                                 <div className="row md:ml-3 mt-3">
-                                    <Button className="md:text-right" onClick={() => onCreateClassroom()}>Create</Button>
+                                    <Button onClick={() => onCreateClassroom()}>Create</Button>
                                 </div>
                             </div>
                         </div>
@@ -189,10 +242,16 @@ const Classroom = ({ rooms }: { rooms: Array<Classroom> }) => {
                     </Table.Header>
                     <Table.Body>
                         {classroom == null || classroom.length == 0 ?
-                            
+
                             <Table.Row>
                                 <Table.Cell colSpan={3} className="text-center px-6 py-4 ">
-                                    <span>No any data here</span>
+                                   {loading ? 
+                                        <div className="p-3">
+                                            <Loader show={loading}/>
+                                        </div>
+                                        :
+                                        <span>No any data here</span>
+                                   }
                                 </Table.Cell>
                             </Table.Row> :
                             classroom.map((room: Classroom, index: number) => {
@@ -202,8 +261,14 @@ const Classroom = ({ rooms }: { rooms: Array<Classroom> }) => {
                                         <Table.Cell>{room.description}</Table.Cell>
                                         <Table.Cell>
 
-                                            <button className="p-3 bg-violet-400 text-white rounded" onClick={() => goClassroom(room.id)}> 
+                                            <button className="p-3 bg-violet-400 text-white rounded" onClick={() => goClassroom(room.id)}>
                                                 <EyeIcon className="w-5"></EyeIcon>
+                                            </button>
+                                            <button className="p-2 bg-red-600 text-white rounded m-2" onClick={() => {
+                                                setRemoveClassroomId(room.id)
+                                                setRemoveModal(true);
+                                            }}>
+                                                <TrashIcon className="w-5 " />
                                             </button>
                                         </Table.Cell>
                                     </Table.Row>

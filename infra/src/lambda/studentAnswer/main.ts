@@ -2,6 +2,7 @@ import listStudentAnswer from "./listStudentAnswer";
 import uploadStudentAnswer from "./uploadStudentAnswer"
 import saveStudentAnswer from "./saveStudentAnswer"
 import {Grading} from "./interface"
+import getStat from "./getStat";
 
 type AppsyncEvent = {
     info: {
@@ -45,6 +46,11 @@ exports.handler = async (event: AppsyncEvent) => {
         case "saveStudentAnswer":
             return await saveStudentAnswer({
                 input: event.arguments.input
+            })
+        case "getStat":
+            return await getStat({
+                classroomId: event.arguments.classroomId,
+                sheetId: event.arguments.sheetId
             })
 
         default:

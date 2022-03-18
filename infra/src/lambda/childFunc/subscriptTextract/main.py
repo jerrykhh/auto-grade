@@ -143,12 +143,14 @@ def handler(event, context):
                 )
             
             data_unmash = dynamo_obj_to_python_obj(data["Item"])
+            print("data_unmash", data_unmash)
+            
             questions = []
             for locate in data_unmash["locate"]:
                 print(locate)
                 if locate["tcode"] not in ["studentid", "classroom", "name", "code"]:
                     questions.append(locate)
-            # print(questions)
+            print("questions", questions)
             
             # src_pdf_file:fitz.Document = fitz.open(
             #     stream=s3.Object("auto-grade-app-storage", "private/6de9b4a0-7d10-4055-80a9-9eab7933bf7b/45b89c18-2e6a-447f-a1d3-5b52053927a5/9fe8ba4f-5152-40f2-8181-1790b65a0829/885467ff-44bb-4394-9f73-2654d4d316d5.pdf").get()['Body'].read(),
@@ -160,6 +162,7 @@ def handler(event, context):
                 filetype="pdf"
             )
 
+            print("student Answer")
             
             std_ans = TextractKVParser(response).extract()
             print(std_ans)
@@ -173,7 +176,7 @@ def handler(event, context):
                 img_key = uuid.uuid4()
                 uri = f"{classroomId}/{sheetId}/{img_key}.jpg"
                 # question_img = s3.Object("auto-grade-app-storage", uri)
-                question_img = s3.Object(textract_job["DocumentLocation"]["S3Bucket"], uri)
+                question_img = s3.Object(textract_job["DocumentLocation"]["S3Bucket"], "public/"+uri)
                 print(question)
                 page = src_pdf_file.load_page(int(question['page'])-1)
                 page.set_cropbox(fitz.Rect(question['x'], question['y'], question['p_height'], question['p_width']))
@@ -300,4 +303,5 @@ def handler(event, context):
             # print(response)
 
     except Exception as e:
+        print("exception")
         print(e)

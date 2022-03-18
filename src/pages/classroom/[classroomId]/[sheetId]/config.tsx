@@ -15,6 +15,7 @@ import { AnswerSheet } from "../../../../interface/answersheet";
 import { saveQuestion, SaveQuestionMutation } from "../../../../lib/answersheet/mutation";
 import { getAnswerSheet, GetAnswerSheetQuery } from "../../../../lib/answersheet/queries";
 import {XIcon} from "@heroicons/react/outline"
+import SheetImageView from "../../../../components/customize/element/SheetImageView";
 
 export const getServerSideProps: GetServerSideProps = async ({ req, query }) => {
     const { sheetId, classroomId } = query;
@@ -243,7 +244,7 @@ const SheetDetailPage = ({ sub, answerSheet }: { sub: string, answerSheet: Answe
                                     return (
                                         <div className="w-full md:flex mb-10" key={index}>
                                             <div className="sm:w-full md:flex-col md:w-8/12 md:mr-4">
-                                                {/* <SheetImageView src={`${sub}/${classroomId}/${sheetId}/${sheet.qid}.jpg`} /> */}
+                                                <SheetImageView src={`${classroomId}/${sheetId}/config/${sheet.qid}.jpg`} />
                                             </div>
                                             <div className="sm:w-full md:flex-col md:w-4/12 border-gray-300 bg-gray-100 md:border p-5 sm:border-t-0">
                                                 <div className="row">
@@ -265,10 +266,13 @@ const SheetDetailPage = ({ sub, answerSheet }: { sub: string, answerSheet: Answe
 
                                                     </div>
                                                 </div>
-                                                <div className="row">
-                                                    <span className="font-semibold">Model Answer:</span>
-                                                    <TextArea rowSpan={5} colSpan={5} placeholder="Answer" value={answers[sheet.qid].answer} onChange={e => setQuestionAnswer(sheet.qid, e.currentTarget.value)} />
-                                                </div>
+                                                {answerSheet.type == 1?
+                                                    <div className="row">
+                                                        <span className="font-semibold">Model Answer:</span>
+                                                        <TextArea rowSpan={5} colSpan={5} placeholder="Answer" value={answers[sheet.qid].answer} onChange={e => setQuestionAnswer(sheet.qid, e.currentTarget.value)} />
+                                                    </div>
+                                                    :<></>
+                                                }
                                                 <div className="row">
                                                     <span className="font-semibold">Mark:</span>
                                                     <Textfield width={5} placeholder="mark" type="number" min={0} value={answers[sheet.qid].mark <= 0 ? "" : answers[sheet.qid].mark} onChange={e => setQuestionMark(sheet.qid, e.currentTarget.value)} />

@@ -26,7 +26,6 @@ export const listStudentAnswer = `
 `
 
 
-
 export type ListStudentAnswerQuery = {
   listStudentAnswer: {
     items: Array<StudentAnswer>
@@ -62,3 +61,27 @@ export type ListStudentAnswerDataQuery = {
   }
 }
 
+export const getStudentStat = `
+  query GetStudentStat(
+    $sheetId: ID!
+    $classroomId: ID!
+  ){
+    getStat(sheetId: $sheetId, classroomId: $classroomId){
+      items {
+        studentId
+        grade
+      }
+    }
+  }
+`
+
+type StudentStat = {
+  studentId: string
+  grade: number
+}
+
+export type GetStudentStatQuery = {
+  getStat: {
+    items: Array<StudentStat>
+  }
+}

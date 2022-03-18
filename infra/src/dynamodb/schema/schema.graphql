@@ -152,6 +152,15 @@ type StudentAnswerSheetLocateConnection {
     nextToken: String
 }
 
+# student stat
+type StudentStat {
+    studentId: ID!
+    grade: Float!
+}
+
+type StudentStatResponse {
+    items: [StudentStat]
+}
 # Query & Mutation
 
 type RequestResponse{
@@ -166,6 +175,10 @@ type Query {
         @aws_cognito_user_pools
     getQuestion(sheetId: ID!, classroomId: ID!, id: ID!): PDFAnnotation #
         @aws_cognito_user_pools
+
+    getStat(classroomId: ID!, sheetId: ID!): StudentStatResponse
+         @aws_cognito_user_pools
+
     listClassrooms(teacherId: ID!, limit: Int, nextToken: String): ClassroomConnection #
         @aws_cognito_user_pools
     listAnswerSheet(classroomId: ID!, limite: Int, nextToken: String): AnswerSheetConnection #
@@ -184,7 +197,7 @@ type Mutation{
         @aws_cognito_user_pools
     updateClassroom(classroom: UpdateClassroomInput!): Classroom #
         @aws_cognito_user_pools
-    removeClassroom(id: ID!, teacherId: ID!): String #
+    removeClassroom(id: ID!, teacherId: ID!): RequestResponse #
         @aws_cognito_user_pools
   	uploadStudent(id:ID!, teacherId:ID!, student:[InputStudent]): RequestResponse #
         @aws_cognito_user_pools

@@ -9,14 +9,19 @@ import { ErrorAlert } from "../element/alert";
 type LoginProps = {
     header?: React.ReactNode
     onLogin: Function
+    needChangePassword?: boolean
+    onChangePassword?: Function
     themeImagePath: string,
     errMessage: String
 }
 
-const LoginPage = ({ header, onLogin, themeImagePath, errMessage }: LoginProps): JSX.Element => {
+const LoginPage = ({ header, onLogin, themeImagePath, errMessage, needChangePassword, onChangePassword }: LoginProps): JSX.Element => {
 
     const [username, setUsername] = useState("");
     const [password, setPassword] = useState("");
+
+    const [newPwd, setNewPwd] = useState("");
+    const [confirmPwd, setConfirmPwd] = useState("");
 
     return (
         <Page
@@ -25,23 +30,42 @@ const LoginPage = ({ header, onLogin, themeImagePath, errMessage }: LoginProps):
                 left={
                     <div className="text-center">
                         <div className="flex flex-col p-12">
-                            {errMessage != ""?
+                            {errMessage != "" ?
                                 <ErrorAlert mes={errMessage} />
-                                    :<></>
+                                : <></>
                             }
                             {!header ?
                                 <h1 className="text-3xl mb-8">Wellcome.</h1>
                                 : header}
                             <div className="p-2">
-                                <div className="py-2">
-                                    <Textfield placeholder="Username" type="text" onChange={e => setUsername(e.currentTarget.value)} value={username} />
-                                </div>
-                                <div className="py-2">
-                                    <Textfield placeholder="Password" type="password" onChange={e => setPassword(e.currentTarget.value)} value={password} />
-                                </div>
-                                <div className="py-2 mt-6">
-                                    <Button type="button" onClick={() => onLogin(username, password)}>Login</Button>
-                                </div>
+                                {needChangePassword && onChangePassword ?
+                                    <React.Fragment>
+                                        <div className="text-left mb-5">You need to change the Password in first time login</div>
+                                        <div className="py-2">
+                                            <div className="text-sm text-left">New Password</div>
+                                            <Textfield placeholder="New Password" type="password" onChange={e => setNewPwd(e.currentTarget.value)} value={newPwd} />
+                                        </div>
+                                        <div className="py-2">
+                                            <div className="text-sm text-left">Confirm New Password</div>
+                                            <Textfield placeholder="Confirm New PAssword" type="password" onChange={e => setConfirmPwd(e.currentTarget.value)} value={confirmPwd} />
+                                        </div>
+                                        <div className="py-2 mt-6">
+                                            <button type="button" className="rounded text-white bg-black p-2 cursor-pointer w-full md:px-8 hover:bg-gray-900" onClick={() => onChangePassword(newPwd, confirmPwd)}>Change Password</button>
+                                        </div>
+                                    </React.Fragment>
+                                    :
+                                    <React.Fragment>
+                                        <div className="py-2">
+                                            <Textfield placeholder="Username" type="text" onChange={e => setUsername(e.currentTarget.value)} value={username} />
+                                        </div>
+                                        <div className="py-2">
+                                            <Textfield placeholder="Password" type="password" onChange={e => setPassword(e.currentTarget.value)} value={password} />
+                                        </div>
+                                        <div className="py-2 mt-6">
+                                            <button type="button" className="rounded text-white bg-black p-2 cursor-pointer w-full md:px-8 hover:bg-gray-900" onClick={() => onLogin(username, password)}>Login</button>
+                                        </div>
+                                    </React.Fragment>
+                                }
                             </div>
                         </div>
                     </div>

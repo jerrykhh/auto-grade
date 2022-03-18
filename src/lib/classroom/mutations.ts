@@ -30,6 +30,7 @@ export const updateStudent = `
     }
 `
 
+
 export type UpdateStudentMutation = {
     uploadStudent: {
         msg: string
@@ -39,6 +40,25 @@ export type UpdateStudentMutation = {
 
 export type UpdateStudentAnswerMutation = {
     uploadStudentAnswer: {
+        msg: string
+        result: boolean
+    }
+}
+
+export const removeClassroom = `
+    mutation RemoveClassroom(
+        $id: ID!
+        $teacherId: ID!
+    ){
+        removeClassroom(id: $id, teacherId: $teacherId){
+            result
+            msg
+        }
+    }
+`
+
+export type RemoveClassroomMutation = {
+    removeClassroom: {
         msg: string
         result: boolean
     }

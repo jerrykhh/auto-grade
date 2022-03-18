@@ -59,7 +59,7 @@ const AnswerSheetCreatePage = () => {
         // try{
         const identityId = await (await Auth.currentUserCredentials()).identityId;
         try {
-            const s3Obj = await Storage.put(`${classroomId}}/${id}.pdf`, uploadFile, {
+            const s3Obj = await Storage.put(`${classroomId}/${id}.pdf`, uploadFile, {
                 level: "private"
             });
             console.log(s3Obj.key);
@@ -76,7 +76,7 @@ const AnswerSheetCreatePage = () => {
                         file: {
                             bucket: awsconfig.Storage.AWSS3.bucket,
                             region: awsconfig.Storage.AWSS3.region,
-                            uri: `private/${identityId}/${classroomId}}/${id}.pdf`
+                            uri: `private/${identityId}/${classroomId}/${id}.pdf`
                         }
                     }
                 }) as GraphQLResult<CreateAnswerSheetMutation>

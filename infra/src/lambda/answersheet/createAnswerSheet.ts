@@ -52,23 +52,23 @@ const createAnswerSheet = async(event: CreateAnswerSheetEvent) => {
                     S: ""
                 },
                 page:{
-                    N:"0"
+                    N: "0"
                 }
             }
         }
 
         await dynamodb.putItem(params).promise()
-        lambda.invoke({
+        await lambda.invoke({
             FunctionName: `${process.env.CREATE_ANSWERSHEET_ARN}`,
             InvocationType: "Event",
-            Payload: {
+            Payload: JSON.stringify({
                 id: id,
                 teacherId: event.teacherId,
                 classroomId: event.classroomId,
                 file: event.file,
                 type: event.type
-            }
-        })
+            })
+        }).promise()
 
         return {
             result: true,

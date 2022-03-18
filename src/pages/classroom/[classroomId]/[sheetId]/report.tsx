@@ -9,10 +9,10 @@ import { ErrorAlert } from "../../../../components/element/alert";
 import Table from "../../../../components/element/table";
 import { AnswerSheet, SKIP_TCODE } from "../../../../interface/answersheet";
 import { Student } from "../../../../interface/student";
-import { ReviewStudentAnswer, StudentAnswer } from "../../../../interface/studentAnswer";
+import { ReviewStudentAnswer, StudentAnswer, StudentStat } from "../../../../interface/studentAnswer";
 import { getAnswerSheet, GetAnswerSheetQuery } from "../../../../lib/answersheet/queries";
 import { getClassroomStudents } from "../../../../lib/classroom/queries";
-import { listStudentAnswerData, ListStudentAnswerDataQuery, ListStudentAnswerQuery } from "../../../../lib/studentAnswer/queries";
+import { getStudentStat, GetStudentStatQuery, listStudentAnswerData, ListStudentAnswerDataQuery, ListStudentAnswerQuery } from "../../../../lib/studentAnswer/queries";
 import { listStudentAnswerSheet } from "../../../../lib/studentAnswerSheet/queries";
 import InfiniteScroll from 'react-infinite-scroll-component';
 
@@ -89,6 +89,7 @@ export const getServerSideProps: GetServerSideProps = async ({ req, query }) => 
             if (!found)
                 locates.push(locate);
         }
+
         answerSheet.locate = locates;
         res.props.answerSheet = answerSheet;
 
@@ -158,12 +159,37 @@ type ReportStudentAnswerData = {
 const ReportPage = ({ totalStudent, absStudents, answerSheet }: { totalStudent: number, absStudents: Array<Student>, answerSheet: AnswerSheet }) => {
 
     const router = useRouter();
+    const { classroomId, sheetId } = router.query;
 
     const [currQuestionIdx, setCurrQuestionIdx] = useState<number>(0);
     const [studentAnswer, setStudentAnswer] = useState<ReportStudentAnswerData>({});
 
     const [portalErrMes, setPortalErrMes] = useState<String>("");
 
+    const [statStudent, setStatStudent] = useState<Array<StudentStat>>([]);
+    const [statStudentLoading, setStatStudentLoading] = useState<boolean>(true);
+
+
+
+    const fetechStudentStat = async () => {
+        setStatStudentLoading(true);
+        console.log("student stat");
+
+        const { data } = await API.graphql({
+            query: getStudentStat,
+            variables: {
+                sheetId: sheetId,
+                classroomId: classroomId
+            }
+        }) as GraphQLResult<GetStudentStatQuery>
+        console.log(data);
+
+        if (data?.getStat.items) {
+            setStatStudent(data.getStat.items)
+            setStatStudentLoading(false);
+        }
+        setStatStudentLoading(false);
+    }
 
     const fetechQuestion = async () => {
         console.log("idx", currQuestionIdx);
@@ -251,6 +277,59 @@ const ReportPage = ({ totalStudent, absStudents, answerSheet }: { totalStudent: 
 
     }
 
+    const statExtract = (data: Array<StudentStat>) => {
+        const result: { [key: string]: number } = {
+            ">=85%": 0,
+            ">=65% and <85%": 0,
+            ">=40% and <65%": 0,
+            "<39%": 0
+        };
+
+        for (const std of data) {
+            if (std.grade >= 85) {
+                result[">=85%"]++;
+            } else if (std.grade >= 65) {
+                result[">=65% and <85%"]++;
+            } else if (std.grade >= 40) {
+                result[">=40% and <65%"]++;
+            } else {
+                result["<39%"]++;
+            }
+        }
+
+        const labels = Object.keys(result);
+        const chartDatasetData = Object.values(result);
+
+        const chartData = {
+            labels,
+            datasets: [
+                {
+                    label: 'Grade Distribution',
+                    data: chartDatasetData,
+                    backgroundColor: [
+                        'rgba(255, 99, 132, 0.2)',
+                        'rgba(54, 162, 235, 0.2)',
+                        'rgba(255, 206, 86, 0.2)',
+                        'rgba(75, 192, 192, 0.2)',
+                        'rgba(153, 102, 255, 0.2)',
+                        'rgba(255, 159, 64, 0.2)',
+                    ],
+                    borderColor: [
+                        'rgba(255, 99, 132, 1)',
+                        'rgba(54, 162, 235, 1)',
+                        'rgba(255, 206, 86, 1)',
+                        'rgba(75, 192, 192, 1)',
+                        'rgba(153, 102, 255, 1)',
+                        'rgba(255, 159, 64, 1)',
+                    ],
+                    borderWidth: 1,
+                }
+            ]
+        }
+
+        return <Pie data={chartData} width={"50%"} className="md:max-w-max" />;
+    }
+
     const getQuestion = (qid: string) => {
         for (const locate of answerSheet.locate!) {
             if (locate.qid == qid)
@@ -261,7 +340,7 @@ const ReportPage = ({ totalStudent, absStudents, answerSheet }: { totalStudent: 
 
     useEffect(() => {
         fetechQuestion();
-
+        fetechStudentStat();
     }, [])
 
 
@@ -312,6 +391,46 @@ const ReportPage = ({ totalStudent, absStudents, answerSheet }: { totalStudent: 
                         </div>
                         : <></>
                     }
+                    <div className="my-5">
+                        <Accordion
+                            title="Graded Result">
+                            <React.Fragment>
+                                <div className="my-4">
+                                    <Table>
+                                        <Table.Row>
+                                            <Table.HeaderCell>Student ID</Table.HeaderCell>
+                                            <Table.HeaderCell>Grade</Table.HeaderCell>
+                                        </Table.Row>
+                                        {statStudentLoading ?
+                                            <Table.Row>
+                                                <Table.HeaderCell colSpan={2}>
+                                                    <div className="p-2">
+                                                        <Loader show={statStudentLoading} />
+                                                    </div>
+                                                </Table.HeaderCell>
+                                            </Table.Row>
+                                            : statStudent.map((student, i) => {
+                                                return (
+                                                    <Table.Row key={i}>
+                                                        <Table.Cell>{student.studentId}</Table.Cell>
+                                                        <Table.Cell>{student.grade}</Table.Cell>
+                                                    </Table.Row>
+                                                )
+                                            })
+
+                                        }
+                                    </Table>
+                                </div>
+                                <div className="my-2">
+                                    <div className="sm:mt-4 md:flex justify-center">
+                                        <div className="md:w-1/2">
+                                            {statExtract(statStudent)}
+                                        </div>
+                                    </div>
+                                </div>
+                            </React.Fragment>
+                        </Accordion>
+                    </div>
 
                     <InfiniteScroll
                         dataLength={getStudentAnswerSize()} //This is important field to render the next data
@@ -320,7 +439,7 @@ const ReportPage = ({ totalStudent, absStudents, answerSheet }: { totalStudent: 
                         hasMore={(currQuestionIdx < answerSheet.locate!.length ? true : false)}
                         loader={<div className="w-full p-5"> <Loader show={true} /></div>}
                         endMessage={
-                            <p className="w-full text-center">
+                            <p className="w-full text-center p-2">
                                 <span>- End -</span>
                             </p>
                         }

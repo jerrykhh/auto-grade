@@ -1,12 +1,12 @@
 import { DynamoDB } from "aws-sdk"
 
-interface Student {
+export type Student = {
     id: string,
     name: string,
     email: string
 }
 
-interface Classroom {
+export type  Classroom = {
     id: string,
     teacherId: string,
     name: string,
@@ -14,9 +14,7 @@ interface Classroom {
     students?: Array<Student>
 }
 
-interface ClassroomConnection {
+export type  ClassroomConnection = {
     items: Array<DynamoDB.AttributeMap>
     nextToken: String | null
 }
-
-export {Student, Classroom, ClassroomConnection};

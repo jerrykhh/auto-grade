@@ -39,3 +39,22 @@ export type SaveQuestionMutation = {
         result: boolean
     }
 }
+
+
+export const removeAnswerSheet = `
+    mutation RemoveAnswerSheet (
+        $id: ID!,
+        $classroomId: ID!
+    ){
+        removeAnswerSheet(id: $id, classroomId: $classroomId){
+            result
+            msg
+        }
+    }
+`
+export type RemoveAnswerSheetMutation = {
+    removeAnswerSheet: {
+        msg: string,
+        result: boolean
+    }
+}

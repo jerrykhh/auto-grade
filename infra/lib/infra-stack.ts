@@ -9,7 +9,7 @@ import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as sns from 'aws-cdk-lib/aws-sns';
 import * as subscription from 'aws-cdk-lib/aws-sns-subscriptions';
 import * as origins from 'aws-cdk-lib/aws-cloudfront-origins';
-import * as amplify from 'aws-cdk-lib/aws-amplify';
+import * as amplify from '@aws-cdk/aws-amplify-alpha';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import { DynamoDB } from 'aws-sdk';
 // import * as sqs from 'aws-cdk-lib/aws-sqs';
@@ -658,10 +658,13 @@ export class InfraStack extends cdk.Stack {
         REGION: cdk.Stack.of(this).region,
         STUDENTANSWER_TABLE: studentAnswerDDB.tableName,
         ANSWERSHEET_TABLE: answerSheetDDB.tableName,
+        LOCATESTUDENTANSWERSHEET_TABLE: locateStudentAnswerSheetDDB.tableName,
         STARTTEXTRACT: startTextract.functionArn
-      }
+      },
+      timeout: cdk.Duration.seconds(10)
     });
 
+    locateStudentAnswerSheetDDB.grantReadData(studentAnswerLambda);
     answerSheetDDB.grantReadWriteData(studentAnswerLambda);
     startTextract.grantInvoke(studentAnswerLambda);
 
@@ -684,9 +687,36 @@ export class InfraStack extends cdk.Stack {
     studentAnswerDS.createResolver({
       typeName: "Mutation",
       fieldName: "saveStudentAnswer"
+    });
+
+    studentAnswerDS.createResolver({
+      typeName: "Query",
+      fieldName: "getStat"
     })
 
    
+    const app = new amplify.App(this, "auto-grade-app", {
+      sourceCodeProvider: new amplify.GitHubSourceCodeProvider({
+        owner: 'jerrykhh',
+        repository: 'auto-grade',
+        oauthToken: cdk.SecretValue.secretsManager('github-token')
+      }),
+      environmentVariables: {
+        IDENTITYPOOLID: identityPool.ref,
+        USERPOOLID: userPool.userPoolId,
+        USERPOOLWEBCLIENTID: userPoolClient.userPoolClientId,
+        AWS3_BUCKET: appS3storage.bucketName,
+        AWS3_REGION: cdk.Stack.of(this).region,
+        AWS_APPSYNC_GRAPHQLENDPOINT: graphqlAPI.graphqlUrl,
+        AWS_APPSYNC_REGION: cdk.Stack.of(this).region,
+        AWS_APPSYNC_AUTHENTICATIONTYPE: "AMAZON_COGNITO_USER_POOLS",
+        AWS_APPSYNC_APIKEY: "null",
+        REGION: cdk.Stack.of(this).region
+        
+      }
+    })
+
+    app.addBranch("main")
 
 
 

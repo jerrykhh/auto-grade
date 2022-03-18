@@ -1,3 +1,4 @@
+import { Classroom } from "../../interface/classroom"
 import { Student } from "../../interface/student"
 
 export const listReviewClassroom = `
@@ -21,6 +22,12 @@ export const listReviewClassroom = `
     }
   }
 `
+
+export type ListReviewClassroomQuery = {
+  listClassrooms: {
+    items: Array<Classroom>
+  }
+}
 
 export const listClassroom = `
     query ListClassroom(

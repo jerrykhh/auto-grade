@@ -27,19 +27,13 @@ def handler(event, context):
                     "S": event["classroomId"]
                 }
             },
-            UpdateExpression="SET #status = :status, #lastJobId = :lastJobId",
+            UpdateExpression="SET #status = :status",
             ExpressionAttributeValues={
-                            ':lastJobId':{
-                                'S': last_job_id
-
-                            },
                             ':status':{
                                 'N':  "7"
-                                
                             }
                         },
             ExpressionAttributeNames={
-                            "#lastJobId": "lastJobId",
                             "#status": "status"
                         }
             )
@@ -118,7 +112,28 @@ def handler(event, context):
                             Body=cropped_img.tobytes(output="jpg"))
                 pdf = fitz.open()
         
+
         
+        dynamoDB.update_item(
+            TableName=os.environ["ANSWERSHEET_TABLE"],
+            Key={
+                "id": {
+                    "S": event["sheetId"]
+                },
+                "classroomId": {
+                    "S": event["classroomId"]
+                }
+            },
+            UpdateExpression="SET #lastJobId = :lastJobId",
+            ExpressionAttributeValues={
+                            ':lastJobId':{
+                                'S':  last_job_id
+                            }
+                        },
+            ExpressionAttributeNames={
+                            "#lastJobId": "lastJobId"
+                        }
+        )
                 
         
         

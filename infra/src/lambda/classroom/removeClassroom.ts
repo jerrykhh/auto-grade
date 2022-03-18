@@ -24,10 +24,16 @@ const RemoveClassroom = async (event: RemoveClassroomEvent) => {
         }
     }
     try{
-        await dynamodb.deleteItem(params).promise();
-        return event.id
+        await dynamodb.deleteItem(params, () => {}).promise();
+        return {
+            result: true,
+            msg: `${event.id} is removed`
+        }
     }catch(error){
-        console.log(error);
+        return {
+            result: false,
+            msg: error
+        }
     }
     return null
 }
