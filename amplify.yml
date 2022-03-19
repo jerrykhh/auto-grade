@@ -4,7 +4,7 @@ frontend:
     preBuild:
       commands:
         - rm -rf ./infra/
-        - npm install
+        - npm ci
     build:
       commands:
         - echo "NEXT_PUBLIC_IDENTITYPOOLID=$IDENTITYPOOLID" >> .env.local
@@ -19,7 +19,7 @@ frontend:
         - echo "NEXT_PUBLIC_REGION="$REGION >> .env.local
         - npm run build
   artifacts:
-    baseDirectory: build
+    baseDirectory: .next
     files:
       - "**/*"
   cache:

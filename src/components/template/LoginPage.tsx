@@ -71,11 +71,12 @@ const LoginPage = ({ header, onLogin, themeImagePath, errMessage, needChangePass
                     </div>
                 }
                 right={
-                    <Image
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
                         alt="Login Background Image"
                         src={themeImagePath}
                         className="object-cover w-full h-screen hidden md:block"
-                        layout="fill"
+                        // layout="fill"
                     />
                 }
             />
