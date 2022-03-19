@@ -191,7 +191,7 @@ const Classroom = () => {
             }
             {createClassroomModal ?
                 <Modal
-                    header="Test">
+                    header="Create Classroom">
                     <React.Fragment>
                         {modalMes != "" ?
                             <ErrorAlert mes={modalMes} />
