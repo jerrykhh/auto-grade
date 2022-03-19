@@ -1,6 +1,5 @@
 import React, { Dispatch, SetStateAction, useState } from "react";
 import LHSplitLayout from "../layout/LHSplitLayout"
-import Image from 'next/image'
 import Textfield from "../input/textfield";
 import Button from "../element/button";
 import Page from "../layout/Page";

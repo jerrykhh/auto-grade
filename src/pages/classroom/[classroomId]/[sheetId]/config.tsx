@@ -2,7 +2,6 @@
 import { GraphQLResult } from "@aws-amplify/api-graphql";
 import { withSSRContext, API, Auth, Storage } from "aws-amplify";
 import { GetServerSideProps } from "next";
-import Image, { ImageProps } from "next/image";
 import { useRouter } from "next/router";
 import React, { HTMLProps, useEffect, useRef, useState } from "react";
 import Button from "../../../../components/element/button";

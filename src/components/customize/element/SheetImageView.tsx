@@ -1,11 +1,10 @@
-/* eslint-disable @next/next/no-img-element */
-import { ImageProps } from "next/image";
-import React from "react";
+
+import React, { HTMLProps } from "react";
 import { useEffect, useState } from "react";
 import Loader from "../../element/loader";
 import { Storage } from "aws-amplify";
 
-const SheetImageView = ({ ...props }: ImageProps): JSX.Element => {
+const SheetImageView = ({ ...props }: HTMLProps<HTMLImageElement>): JSX.Element => {
 
     const [loading, setLoading] = useState<boolean>(true);
     const [src, setSrc] = useState<string>();
