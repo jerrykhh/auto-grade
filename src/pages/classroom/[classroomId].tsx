@@ -487,7 +487,7 @@ const ClassroomDetailPage = ({ room }: { room: Classroom }) => {
                                                     {Number(sheet.status) >= 5 ?
                                                         <React.Fragment>
 
-                                                            {Number(sheet.status) == 7 || Number(sheet.status) == 11 ?
+                                                            {Number(sheet.status) == 7 || Number(sheet.status) == 11 || Number(sheet.status) == 9 ? 
                                                                 <></> :
                                                                 <Link href={Number(sheet.status) == 5 ? `./${classroomId}/${sheet.id}/config` : `./${classroomId}/${sheet.id}/`}>
                                                                     <a target="_blank">
